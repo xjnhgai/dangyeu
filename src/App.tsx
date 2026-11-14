@@ -1423,10 +1423,11 @@ function App() {
   }
 
   function commitSavedGroup3(group3: Group3) {
-    if (!selectedGroup1 || !selectedGroup2) return
+    if (!selectedGroup1 || !selectedGroup2) return false
     const draft = savedRowDrafts[group3.id]
-    if (!draft) return
+    if (!draft) return true
 
+    let committed = false
     runAction(() => {
       const type = data.settingTypes.find((item) => item.id === group3.settingTypeId)
       if (!type) throw new Error('Không tìm thấy nhóm thiết lập của bản ghi này.')
@@ -1463,12 +1464,14 @@ function App() {
           coefficientT: draft.coefficientT.trim(),
         }),
       }))
+      committed = true
       setSavedRowDrafts((current) => {
         const next = { ...current }
         delete next[group3.id]
         return next
       })
     })
+    return committed
   }
 
   function removeGroup3(group3Id: EntityId) {
@@ -1820,7 +1823,7 @@ function App() {
   function openEntryDock(mode: 'saved' | 'draft', rowId: string, typeId: string, field: 'listing' | 'point' = 'listing') {
     if (!selectedGroup1 || !selectedGroup2) return
     clearFeedback()
-    if (field === 'listing') setPaperFitRequest((value) => value + 1)
+    setPaperFitRequest((value) => value + 1)
     setEntryDock({ mode, rowId, typeId, group1Id: selectedGroup1.id, group2Id: selectedGroup2.id, field })
   }
 
@@ -1832,16 +1835,14 @@ function App() {
 
   function commitEntryDock() {
     if (!entryDock || !entryDockRow || !entryDockType) return
-    if (!entryDockRow.listing.trim()) { setErrorMessage('Hãy nhập danh sách số.'); return }
+    try {
+      const values = parseSettingNumberListV2(entryDockRow.listing, entryDockType.formulaId)
+      if (!values.length) throw new Error('empty')
+      if (['xa', 'xb'].includes(entryDockType.formulaId) && (values.length < 2 || values.length > 5)) throw new Error('count')
+    } catch { window.alert('Nhập sai số'); return }
+    try { parsePointTextV2(entryDockRow.point) } catch { window.alert('Điểm phải là số nguyên từ 0 đến 9999.'); return }
     if (entryDock.mode === 'draft') commitDraftRow(entryDock.typeId, entryDock.rowId)
-    else if (entryDockSaved) {
-      try {
-        parseSettingNumberListV2(entryDockRow.listing, entryDockType.formulaId)
-        parsePointTextV2(entryDockRow.point)
-      } catch (error) { setErrorMessage(error instanceof Error ? error.message : 'Dữ liệu chưa hợp lệ.'); return }
-      commitSavedGroup3(entryDockSaved)
-      setEntryDock(null)
-    }
+    else if (entryDockSaved && commitSavedGroup3(entryDockSaved)) setEntryDock(null)
   }
 
   function closeNotice() {
@@ -2029,7 +2030,7 @@ function App() {
               <button type="button" onClick={() => setZoom((current) => Math.max(0.35, Number((current - 0.08).toFixed(2))))} aria-label="Thu nhỏ">−</button>
               <button type="button" onClick={() => applyPageFit('page')} aria-label="Vừa trang">Vừa trang</button>
               <button type="button" onClick={() => applyPageFit('width')} aria-label="Vừa chiều ngang">Vừa ngang</button>
-              <button type="button" onClick={() => setZoom((current) => Math.min(1.5, Number((current + 0.08).toFixed(2))))} aria-label="Phóng to">＋</button>
+              <button type="button" onClick={() => setZoom((current) => Math.min(1, Number((current + 0.08).toFixed(2))))} aria-label="Phóng to">＋</button>
             </div>
           </div>
 
@@ -2350,7 +2351,7 @@ function App() {
         title={`${entryDockGroup?.name ?? ''} · ${entryDockType.name}`}
         listing={entryDockRow.listing} point={entryDockRow.point} saved={entryDock.mode === 'saved'}
         onListing={(value) => updateEntryDock('listing', value)} onPoint={(value) => updateEntryDock('point', value)}
-        onCommit={commitEntryDock} onClose={() => setEntryDock(null)} error={errorMessage}
+        onCommit={commitEntryDock} onClose={() => setEntryDock(null)}
       />}
 
       {(storageHydrating || retentionBusy) && (

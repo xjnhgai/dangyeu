@@ -218,3 +218,19 @@
  .a4-v2-section-results { font-variant-numeric: tabular-nums; }
  .a4-v2-section { overflow-wrap: anywhere; }
 }
+@media screen {
+ .a4-v2-page { font-size: 6px; }
+ .a4-v2-header h1 { font-size: 10.5px; }
+ .a4-v2-header h2 { font-size: 8px; }
+ .a4-v2-section h3, .a4-v2-number, .a4-v2-point, .a4-v2-listing { font-size: 7px; }
+ .a4-v2-number { line-height: 8.5px; }
+ .a4-v2-listing { gap: 1px; }
+ .a4-v2-section-results { display: grid; grid-template-columns: max-content max-content; column-gap: .2ch; font-size: 7px; line-height: 8.5px; min-height: 26px; }
+ .a4-v2-result-point, .a4-v2-result-d, .a4-v2-result-t { display: contents; }
+ .a4-v2-result-label { width: auto; flex: none; }
+ .a4-v2-total-area span { font-size: 5.5px; }
+ .a4-v2-total-area strong { font-size: 8px; }
+}
+
+/* A tall sheet must start at the top even while the keyboard reduces the viewport. */
+.app-shell-page .a4-v2-scroll.is-fit-page { align-items: flex-start; }

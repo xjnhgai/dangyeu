@@ -22,7 +22,7 @@ interface A4PageV2Props {
 }
 
 export default function A4PageV2({ projection, summary, results, showCalculation = true, zoom = 1, onZoomChange, centerInViewport = false, fitRequest = 0 }: A4PageV2Props) {
-  const safeZoom = Math.max(0.03, Math.min(4, zoom))
+  const safeZoom = Math.max(0.03, Math.min(1, zoom))
   const pageRef = useRef<HTMLElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
   const zoomCallbackRef = useRef(onZoomChange)
@@ -33,6 +33,7 @@ export default function A4PageV2({ projection, summary, results, showCalculation
 
   useLayoutEffect(() => {
     autoFitRef.current = fitRequest > 0
+    if (fitRequest > 0 && viewportRef.current) { viewportRef.current.scrollTop = 0; viewportRef.current.scrollLeft = 0 }
   }, [fitRequest])
 
   useEffect(() => {
@@ -65,7 +66,7 @@ export default function A4PageV2({ projection, summary, results, showCalculation
       if (event.touches.length === 2 && initialDistance > 0) {
         event.preventDefault()
         const ratio = distance(event.touches) / initialDistance
-        const nextZoom = Math.max(0.03, Math.min(4, initialZoom * ratio))
+        const nextZoom = Math.max(0.03, Math.min(1, initialZoom * ratio))
         zoomCallbackRef.current?.(nextZoom)
       }
     }
@@ -97,8 +98,7 @@ export default function A4PageV2({ projection, summary, results, showCalculation
       const height = Math.max(page.scrollHeight, page.offsetHeight, paperSize.minHeight)
       setPageHeight(height)
       if (autoFitRef.current) {
-        const availableHeight = viewport.clientHeight || window.innerHeight
-        zoomCallbackRef.current?.(Math.max(0.03, Math.min(1, width / paperSize.width, availableHeight / height)))
+        zoomCallbackRef.current?.(1)
       }
     }
     update()

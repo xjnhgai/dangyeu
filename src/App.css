@@ -2190,3 +2190,11 @@ body:has(.pin-screen) { overflow: hidden; }
 .setting-type-chip { touch-action: none; cursor: grab; user-select: none; }
 .entry-dock { bottom: auto; top: calc(var(--visual-top, 0px) + var(--visible-height, 100dvh) - var(--entry-dock-height, 140px) - 6px); }
 .compact-form textarea { width: 100%; box-sizing: border-box; min-height: 76px; padding: 8px; border: 1px solid #d8e0e8; border-radius: 7px; color: #26374b; background: #fff; font: inherit; font-size: 16px; resize: vertical; }
+/* Keep the page in the visible viewport when Safari pans to a focused field. */
+body:has(.app-shell-page) { position: fixed; inset: 0; width: 100%; overflow: hidden; }
+.app-shell-page .document-stage { position: fixed; left: 0; right: 0; top: calc(var(--visual-top, 0px) + 44px); height: calc(var(--visible-height, 100dvh) - 110px); min-height: 0; }
+.app-shell-page .document-paper-wrap { height: 100%; min-height: 0; }
+.app-shell-page .a4-v2-scroll { height: 100%; max-height: 100%; overflow: auto; }
+.app-shell-page.is-entry-docked .document-stage { top: calc(var(--visual-top, 0px) + 44px); height: max(40px, calc(var(--visible-height, 100dvh) - var(--entry-dock-height, 140px) - 56px)); }
+.app-shell-page.is-entry-docked .document-paper-wrap { height: 100%; }
+.entry-dock-heading { justify-content: space-between; }

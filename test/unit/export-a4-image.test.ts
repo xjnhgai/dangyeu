@@ -34,8 +34,8 @@ describe('A4 JPEG export', () => {
     await exportA4Images(projection(), summary, new Map(), true)
     const number = pages[0].find((call) => call.text === '123')!
     const divider = pages[0].find((call) => call.divider)!
-    expect(number.font).toContain('44px')
-    expect(number.x + 3 * 44 * .55).toBeLessThan(divider.x)
+    expect(number.font).toContain('22px')
+    expect(number.x + 3 * 22 * .55).toBeLessThan(divider.x)
   })
   it('includes the same section Point/D/T fields as the on-screen projection', async () => {
     const pages = canvasRecorder()

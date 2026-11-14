@@ -38,11 +38,11 @@ function createPage(projection: A4ProjectionV2): ExportPage {
   context.fillStyle = '#1d2734'
   context.textBaseline = 'top'
   context.textAlign = 'center'
-  context.font = '700 66px Arial, Helvetica, sans-serif'
+  context.font = '700 33px Arial, Helvetica, sans-serif'
   context.fillText(projection.group1.dateLabel, WIDTH / 2, MARGIN_TOP)
   let contentTop = MARGIN_TOP + 112
   if (projection.mode === 'group2' && projection.group2) {
-    context.font = '600 49px Arial, Helvetica, sans-serif'
+    context.font = '600 24.5px Arial, Helvetica, sans-serif'
     context.fillText(projection.group2.name, WIDTH / 2, contentTop)
     contentTop += 85
   }
@@ -52,14 +52,14 @@ function createPage(projection: A4ProjectionV2): ExportPage {
 function drawSectionTitle(context: CanvasRenderingContext2D, x: number, y: number, title: string): number {
   context.textAlign = 'left'
   context.fillStyle = '#1d2734'
-  context.font = '700 43px Arial, Helvetica, sans-serif'
+  context.font = '700 21.5px Arial, Helvetica, sans-serif'
   context.fillText(title, x, y)
   y += 61
   return y + 20
 }
 
-const ENTRY_LINE_HEIGHT = 59.375
-const SECTION_RESULT_HEIGHT = 166
+const ENTRY_LINE_HEIGHT = 29.6875
+const SECTION_RESULT_HEIGHT = 83
 
 function drawEntrySlice(
   context: CanvasRenderingContext2D,
@@ -76,7 +76,7 @@ function drawEntrySlice(
   const listingHeight = lineCount * ENTRY_LINE_HEIGHT
   // Measure the actual values with the font used to paint them. DA/DB may
   // contain 3 digits, and a previous title/point must not affect the width.
-  context.font = '500 44px Arial, Helvetica, sans-serif'
+  context.font = '500 22px Arial, Helvetica, sans-serif'
   const listingWidth = Math.max(...(values.length ? values : ['—']).map((value) => context.measureText(value).width))
   const characterGap = context.measureText('0').width
   const dividerX = x + listingWidth + context.measureText(' ').width
@@ -86,14 +86,14 @@ function drawEntrySlice(
     if (value === undefined) continue
     const isMatched = result?.listingMatchFlags[index] ?? false
     context.fillStyle = isMatched ? '#c62828' : '#1d2734'
-    context.font = '500 44px Arial, Helvetica, sans-serif'
+    context.font = '500 22px Arial, Helvetica, sans-serif'
     context.textAlign = 'left'
     context.fillText(value, x, y + (index - startIndex) * ENTRY_LINE_HEIGHT)
   }
 
   if (!values.length) {
     context.fillStyle = '#9ba4b0'
-    context.font = '44px Arial, Helvetica, sans-serif'
+    context.font = '22px Arial, Helvetica, sans-serif'
     context.textAlign = 'left'
     context.fillText('—', x, y)
   }
@@ -102,12 +102,12 @@ function drawEntrySlice(
   context.lineWidth = 3
   context.beginPath()
   context.moveTo(dividerX, y - 2)
-  context.lineTo(dividerX, y + (lineCount - 1) * ENTRY_LINE_HEIGHT + 53)
+  context.lineTo(dividerX, y + (lineCount - 1) * ENTRY_LINE_HEIGHT + 26.5)
   context.stroke()
 
   if (pointCenterIndex >= startIndex && pointCenterIndex < endIndex) {
     context.fillStyle = '#1d2734'
-    context.font = '400 44px Arial, Helvetica, sans-serif'
+    context.font = '400 22px Arial, Helvetica, sans-serif'
     context.textAlign = 'left'
     context.fillText(entry.group3.point || '—', dividerX + 3 + characterGap * 0.15, y + (pointCenterIndex - startIndex) * ENTRY_LINE_HEIGHT)
   }
@@ -126,15 +126,15 @@ function drawSectionTotals(
   // Reserve the exact same slot when calculation is hidden to prevent reflow.
   if (showCalculation && summary) {
     context.textAlign = 'left'
-    context.font = '400 44px Arial, Helvetica, sans-serif'
+    context.font = '400 22px Arial, Helvetica, sans-serif'
     context.fillStyle = '#1769aa'
-    const valueX = x + context.measureText('000000').width - context.measureText(' ').width
+    const valueX = x + context.measureText('Trúng:').width + context.measureText(' ').width
     context.fillText('Điểm:', x, y)
     context.fillText(amount(pointTotal), valueX, y)
-    context.fillText('Đánh:', x, y + 53)
-    context.fillText(amount(summary.totals.d), valueX, y + 53)
-    context.fillText('Trúng:', x, y + 106)
-    context.fillText(amount(summary.totals.t), valueX, y + 106)
+    context.fillText('Đánh:', x, y + 26.5)
+    context.fillText(amount(summary.totals.d), valueX, y + 26.5)
+    context.fillText('Trúng:', x, y + 53)
+    context.fillText(amount(summary.totals.t), valueX, y + 53)
   }
   return y + SECTION_RESULT_HEIGHT
 }
@@ -151,11 +151,11 @@ function drawPageTotals(context: CanvasRenderingContext2D, y: number, summary: A
     context.textAlign = 'center'
     if (cell.showLabel) {
       context.fillStyle = '#697689'
-      context.font = '30px Arial, Helvetica, sans-serif'
+      context.font = '15px Arial, Helvetica, sans-serif'
       context.fillText(cell.label, cx, y + 24)
     }
     context.fillStyle = '#1d2734'
-    context.font = '700 43px Arial, Helvetica, sans-serif'
+    context.font = '700 21.5px Arial, Helvetica, sans-serif'
     context.fillText(cell.value, cx, y + 66)
   })
 }
@@ -182,7 +182,7 @@ export async function exportA4Images(
 
   if (!projection.sections.length) {
     page.context.fillStyle = '#8994a3'
-    page.context.font = '36px Arial, Helvetica, sans-serif'
+    page.context.font = '18px Arial, Helvetica, sans-serif'
     page.context.textAlign = 'center'
     page.context.fillText('Chưa có thiết lập hoàn chỉnh để hiển thị.', WIDTH / 2, page.contentTop + 100)
   }
