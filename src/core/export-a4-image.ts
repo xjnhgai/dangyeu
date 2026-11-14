@@ -58,8 +58,8 @@ function drawSectionTitle(context: CanvasRenderingContext2D, x: number, y: numbe
   return y + 20
 }
 
-const ENTRY_LINE_HEIGHT = 45
-const SECTION_RESULT_HEIGHT = 84
+const ENTRY_LINE_HEIGHT = 59.375
+const SECTION_RESULT_HEIGHT = 166
 
 function drawEntrySlice(
   context: CanvasRenderingContext2D,
@@ -74,39 +74,42 @@ function drawEntrySlice(
 ): number {
   const lineCount = Math.max(1, endIndex - startIndex)
   const listingHeight = lineCount * ENTRY_LINE_HEIGHT
-  const listingWidth = Math.max(context.measureText('00').width, context.measureText('—').width)
+  // Measure the actual values with the font used to paint them. DA/DB may
+  // contain 3 digits, and a previous title/point must not affect the width.
+  context.font = '500 44px Arial, Helvetica, sans-serif'
+  const listingWidth = Math.max(...(values.length ? values : ['—']).map((value) => context.measureText(value).width))
   const characterGap = context.measureText('0').width
-  const dividerX = x + listingWidth + characterGap * 0.35
+  const dividerX = x + listingWidth + characterGap * 0.15
 
   for (let index = startIndex; index < endIndex; index += 1) {
     const value = values[index]
     if (value === undefined) continue
     const isMatched = result?.listingMatchFlags[index] ?? false
     context.fillStyle = isMatched ? '#c62828' : '#1d2734'
-    context.font = isMatched ? '700 35px Arial, Helvetica, sans-serif' : '500 35px Arial, Helvetica, sans-serif'
+    context.font = '500 44px Arial, Helvetica, sans-serif'
     context.textAlign = 'left'
     context.fillText(value, x, y + (index - startIndex) * ENTRY_LINE_HEIGHT)
   }
 
   if (!values.length) {
     context.fillStyle = '#9ba4b0'
-    context.font = '35px Arial, Helvetica, sans-serif'
+    context.font = '44px Arial, Helvetica, sans-serif'
     context.textAlign = 'left'
     context.fillText('—', x, y)
   }
 
-  context.strokeStyle = '#cfd6df'
+  context.strokeStyle = '#1d2734'
   context.lineWidth = 3
   context.beginPath()
   context.moveTo(dividerX, y - 2)
-  context.lineTo(dividerX, y + (lineCount - 1) * ENTRY_LINE_HEIGHT + 38)
+  context.lineTo(dividerX, y + (lineCount - 1) * ENTRY_LINE_HEIGHT + 53)
   context.stroke()
 
   if (pointCenterIndex >= startIndex && pointCenterIndex < endIndex) {
     context.fillStyle = '#1d2734'
-    context.font = '28px Arial, Helvetica, sans-serif'
+    context.font = '400 44px Arial, Helvetica, sans-serif'
     context.textAlign = 'left'
-    context.fillText(entry.group3.point || '—', dividerX + characterGap * 0.35, y + (pointCenterIndex - startIndex) * ENTRY_LINE_HEIGHT + 4)
+    context.fillText(entry.group3.point || '—', dividerX + 3 + characterGap * 0.15, y + (pointCenterIndex - startIndex) * ENTRY_LINE_HEIGHT)
   }
 
   return y + listingHeight + 12
@@ -118,17 +121,20 @@ function drawSectionTotals(
   y: number,
   summary: A4SummaryV2['sections'][number] | undefined,
   showCalculation: boolean,
+  pointTotal: number,
 ): number {
   // Reserve the exact same slot when calculation is hidden to prevent reflow.
   if (showCalculation && summary) {
     context.textAlign = 'left'
-    context.font = '32px Arial, Helvetica, sans-serif'
+    context.font = '400 44px Arial, Helvetica, sans-serif'
     context.fillStyle = '#1769aa'
-    const valueX = x + context.measureText('Trúng:').width + context.measureText(' ').width
-    context.fillText('Đánh:', x, y)
-    context.fillText(amount(summary.totals.d), valueX, y)
-    context.fillText('Trúng:', x, y + 40)
-    context.fillText(amount(summary.totals.t), valueX, y + 40)
+    const valueX = x + context.measureText('000000').width
+    context.fillText('Điểm:', x, y)
+    context.fillText(amount(pointTotal), valueX, y)
+    context.fillText('Đánh:', x, y + 53)
+    context.fillText(amount(summary.totals.d), valueX, y + 53)
+    context.fillText('Trúng:', x, y + 106)
+    context.fillText(amount(summary.totals.t), valueX, y + 106)
   }
   return y + SECTION_RESULT_HEIGHT
 }
@@ -206,7 +212,8 @@ export async function exportA4Images(
 
       while (nextIndex < totalRows) {
         const availableRows = Math.floor((CONTENT_BOTTOM - y - 12) / ENTRY_LINE_HEIGHT)
-        if (availableRows <= 0) {
+        const fullPageRows = Math.floor((CONTENT_BOTTOM - page.contentTop - 81 - 12) / ENTRY_LINE_HEIGHT)
+        if (availableRows <= 0 || (nextIndex === 0 && totalRows <= fullPageRows && totalRows > availableRows)) {
           page.columnY[column] = y
           page = createPage(projection)
           pages.push(page)
@@ -256,7 +263,11 @@ export async function exportA4Images(
       x = MARGIN_X
       y = drawSectionTitle(page.context, x, page.contentTop, section.title)
     }
-    y = drawSectionTotals(page.context, x, y, sectionSummary, showCalculation)
+    const pointTotal = section.entries.reduce((total, entry) => {
+      const point = Number(entry.group3.point)
+      return total + (Number.isFinite(point) ? point : 0)
+    }, 0)
+    y = drawSectionTotals(page.context, x, y, sectionSummary, showCalculation, pointTotal)
     page.columnY[column] = y + 16
   }
 

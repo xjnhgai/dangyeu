@@ -1,11 +1,12 @@
+
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
-export default defineConfig({
-  // GitHub Pages project site for the repository named "xinhgai".
-  base: '/xinhgai/',
-
+export default defineConfig(({ command, isPreview }) => {
+  const appBase = command === 'build' || isPreview ? '/dangyeu/' : '/'
+  return {
+  base: appBase,
   plugins: [
     react(),
 
@@ -14,15 +15,24 @@ export default defineConfig({
       // Người dùng sẽ được hỏi trước khi cập nhật.
       registerType: 'prompt',
 
+      includeAssets: ['icons/*.png', 'icons/*.svg'],
+
       manifest: {
-        name: 'Calculator App',
-        short_name: 'Calculator',
+        id: appBase,
+        name: 'ĐẹpGái',
+        short_name: 'ĐẹpGái',
+        lang: 'vi',
         description: 'Ứng dụng tính toán cá nhân, hỗ trợ làm việc ngoại tuyến.',
-        start_url: '/xinhgai/',
-        scope: '/xinhgai/',
+        start_url: appBase,
+        scope: appBase,
         display: 'standalone',
         background_color: '#ffffff',
-        theme_color: '#f4f6f8',
+        theme_color: '#fff0f5',
+        icons: [
+          { src: `${appBase}icons/icon-192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: `${appBase}icons/icon-512.png`, sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: `${appBase}icons/icon-maskable-512.png`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
       },
 
       workbox: {
@@ -36,4 +46,5 @@ export default defineConfig({
       },
     }),
   ],
+}
 })

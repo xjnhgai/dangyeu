@@ -10,6 +10,7 @@ import type {
   ListingCountKey,
   SettingTypeDefinition,
 } from './models-v2'
+import { withCoefficientDefaults } from './coefficient-defaults'
 
 export class TreeV2Error extends Error {
   readonly code: string
@@ -142,7 +143,7 @@ export function createCalculationDataV2(
   ] as const
   return {
     schemaVersion: 2,
-    settingTypes: definitions.map(([formulaId, name], index) => ({
+    settingTypes: definitions.map(([formulaId, name], index) => withCoefficientDefaults({
       id: ids[index]!, formulaId, name, defaultCoefficientD: null, defaultCoefficientT: null,
       ...(['da', 'db', 'xa', 'xb'].includes(formulaId) ? { defaultCoefficientsByCount: {} } : {}),
     })),

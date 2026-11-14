@@ -1,4 +1,3 @@
-
 {
   "name": "calculatorapp-pwa",
   "private": true,
@@ -20,6 +19,7 @@
     "@babel/core": "^7.24.4",
     "@babel/parser": "^7.24.4",
     "@eslint/js": "^10.0.1",
+    "@testing-library/react": "^16.3.3",
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
@@ -27,7 +27,9 @@
     "eslint": "^10.14.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.7",
+    "fake-indexeddb": "^6.2.8",
     "globals": "^17.13.0",
+    "jsdom": "^27.4.0",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.72.1",
     "vite": "^8.3.6",

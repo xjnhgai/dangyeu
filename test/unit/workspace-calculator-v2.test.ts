@@ -193,6 +193,7 @@ describe('V2 workspace calculation', () => {
     for (const formulaId of ['xa', 'xb'] as const) {
       let data = dataWithTwoGroups()
       const type = data.settingTypes.find((entry) => entry.formulaId === formulaId)!
+      type.defaultCoefficientsByCount = {} // Explicit malformed/missing profile, rather than the new default-one catalog.
       data = addGroup3V2(data, 'date-1', 'g-obito', item(`${formulaId}-4`, {
         settingTypeId: type.id,
         listing: '11 22 33 44',

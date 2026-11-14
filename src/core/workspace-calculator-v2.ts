@@ -157,10 +157,12 @@ function calculateGroup3(group3: Readonly<Group3>, drawData: DrawData, data: Cal
       // scalar row/default must never silently satisfy a missing profile.
       const supportsLegacyScalarFallback = type.formulaId === 'da' || type.formulaId === 'db'
       coefficientDText = rowCoefficients?.coefficientD
+        || (supportsLegacyScalarFallback ? group3.coefficientD : '')
         || defaultCoefficients?.coefficientD
         || (supportsLegacyScalarFallback ? group3.coefficientD || type.defaultCoefficientD : '')
         || ''
       coefficientTText = rowCoefficients?.coefficientT
+        || (supportsLegacyScalarFallback ? group3.coefficientT : '')
         || defaultCoefficients?.coefficientT
         || (supportsLegacyScalarFallback ? group3.coefficientT || type.defaultCoefficientT : '')
         || ''

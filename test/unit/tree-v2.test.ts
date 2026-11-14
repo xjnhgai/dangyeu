@@ -51,22 +51,22 @@ function defaultType(data: CalculationDataV2) {
 }
 
 describe('three-level V2 tree', () => {
-  it('creates the catalog with unset independent defaults', () => {
+  it('creates the catalog with independent coefficients defaulting to one', () => {
     const data = base()
     expect(data.settingTypes.map((item) => [item.name, item.formulaId])).toEqual([
       ['LB', 'lb'], ['LA', 'la'], ['ĐA', 'da'], ['ĐB', 'db'],
       ['CA', 'ca'], ['CB', 'cb'], ['XA', 'xa'], ['XB', 'xb'],
     ])
-    expect(defaultType(data).defaultCoefficientD).toBeNull()
-    expect(defaultType(data).defaultCoefficientT).toBeNull()
+    expect(defaultType(data).defaultCoefficientD).toBe('1')
+    expect(defaultType(data).defaultCoefficientT).toBe('1')
   })
 
   it('creates ĐA/ĐB coefficient profiles by digit width', () => {
     const data = base()
     const da = data.settingTypes.find((item) => item.formulaId === 'da')!
     const db = data.settingTypes.find((item) => item.formulaId === 'db')!
-    expect(da.defaultCoefficientsByCount).toEqual({})
-    expect(db.defaultCoefficientsByCount).toEqual({})
+    expect(da.defaultCoefficientsByCount).toEqual({ '2': { coefficientD: '1', coefficientT: '1' }, '3': { coefficientD: '1', coefficientT: '1' } })
+    expect(db.defaultCoefficientsByCount).toEqual({ '2': { coefficientD: '1', coefficientT: '1' }, '3': { coefficientD: '1', coefficientT: '1' } })
     const configured = updateSettingTypeDefaults(data, da.id, {
       coefficientsByCount: {
         '2': { coefficientD: '1', coefficientT: '2' },
@@ -84,7 +84,7 @@ describe('three-level V2 tree', () => {
     const data = base()
     const xa = data.settingTypes.find((item) => item.formulaId === 'xa')!
     expect(xa.name).toBe('XA')
-    expect(xa.defaultCoefficientsByCount).toEqual({})
+    expect(Object.values(xa.defaultCoefficientsByCount ?? {})).toEqual(Array.from({ length: 4 }, () => ({ coefficientD: '1', coefficientT: '1' })))
     const updated = updateSettingTypeDefaults(data, xa.id, {
       coefficientsByCount: {
         '2': { coefficientD: '1', coefficientT: '2' },
@@ -114,7 +114,7 @@ describe('three-level V2 tree', () => {
     expect(entries(updated)).toHaveLength(1)
     expect(defaultType(updated).defaultCoefficientD).toBe('1.5')
     expect(defaultType(updated).defaultCoefficientT).toBe('2.5')
-    expect(defaultType(data).defaultCoefficientD).toBeNull()
+    expect(defaultType(data).defaultCoefficientD).toBe('1')
   })
 
   it('updates defaults independently and keeps an old default when new value is blank', () => {

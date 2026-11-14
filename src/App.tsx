@@ -2,6 +2,16 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent
 import { useRegisterSW } from 'virtual:pwa-register/react'
 
 import A4PageV2 from './components/A4PageV2'
+import ListingInput from './components/ListingInput'
+import EntryDock from './components/EntryDock'
+import PublisherPrompt from './components/PublisherPrompt'
+import { buildEntryPreview, type EntryTarget } from './core/entry-preview'
+import { initializeCoefficientDefaults } from './core/coefficient-defaults'
+import { PinSettings, RetentionSettings } from './components/PrivacySettings'
+import { applyRetention } from './core/app-preferences'
+import { useAppPreferences } from './core/preferences-context'
+import { moveGroup2Name, orderGroups2 } from './core/group2-order'
+import { useEditorViewport } from './core/use-editor-viewport'
 import {
   addGroup1V2,
   addGroup2V2,
@@ -244,6 +254,7 @@ type Group2NamePickerProps = {
   configuredNameKeys: ReadonlySet<string>
   activeNameKey: string
   onSelect: (name: string) => void
+  onReorder: (source: string, target: string) => void
   onAdd: () => void
   onEdit: () => void
 }
@@ -258,6 +269,7 @@ function Group2NamePicker({
   configuredNameKeys,
   activeNameKey,
   onSelect,
+  onReorder,
   onAdd,
   onEdit,
 }: Group2NamePickerProps) {
@@ -265,6 +277,41 @@ function Group2NamePicker({
   const measureRowRef = useRef<HTMLDivElement>(null)
   const [visibleNames, setVisibleNames] = useState<string[]>([])
   const [overflowOpen, setOverflowOpen] = useState(false)
+  const dragRef = useRef<{ source: string; target: string; startX: number; startY: number; moving: boolean } | null>(null)
+  const suppressClickRef = useRef(false)
+  const [dragSource, setDragSource] = useState('')
+  const [dragTarget, setDragTarget] = useState('')
+
+  function startDrag(event: ReactPointerEvent<HTMLButtonElement>, name: string) {
+    if (event.button !== 0 || !event.isPrimary) return
+    suppressClickRef.current = false
+    dragRef.current = { source: name, target: name, startX: event.clientX, startY: event.clientY, moving: false }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  function moveDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    const drag = dragRef.current
+    if (!drag) return
+    if (!drag.moving && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 7) return
+    event.preventDefault()
+    drag.moving = true
+    setDragSource(group2NameKey(drag.source))
+    const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-group2-drag-key]')
+    const targetName = names.find((name) => group2NameKey(name) === target?.dataset.group2DragKey)
+    if (targetName) { drag.target = targetName; setDragTarget(group2NameKey(targetName)) }
+    // Holding a dragged chip over the list button reveals hidden drop targets.
+    if (document.elementFromPoint(event.clientX, event.clientY)?.closest('.group2-overflow-trigger')) setOverflowOpen(true)
+  }
+
+  function finishDrag(cancelled = false) {
+    const drag = dragRef.current
+    dragRef.current = null
+    setDragSource(''); setDragTarget('')
+    if (!drag?.moving) return
+    suppressClickRef.current = true
+    if (!cancelled && drag.source !== drag.target) onReorder(drag.source, drag.target)
+  }
+
 
   useEffect(() => {
     const visibleRow = visibleRowRef.current
@@ -329,13 +376,31 @@ function Group2NamePicker({
     const stateClass = selected ? ' is-selected' : configured ? ' is-configured' : ' is-quick'
     return (
       <button
-        className={`choice-chip${stateClass}`}
+        className={`choice-chip group2-draggable${stateClass}${dragSource === key ? ' is-dragging' : ''}${dragTarget === key && dragSource !== key ? ' is-drop-target' : ''}`}
         type="button"
         key={`${key}-${index ?? 'visible'}`}
         data-measure-group2-index={measuring ? index : undefined}
-        onClick={measuring ? undefined : () => { setOverflowOpen(false); onSelect(name) }}
+        data-group2-drag-key={measuring ? undefined : key}
+        onPointerDown={measuring ? undefined : (event) => startDrag(event, name)}
+        onPointerMove={measuring ? undefined : moveDrag}
+        onPointerUp={measuring ? undefined : () => finishDrag()}
+        onPointerCancel={measuring ? undefined : () => finishDrag(true)}
+        onLostPointerCapture={measuring ? undefined : () => finishDrag(true)}
+        onContextMenu={measuring ? undefined : (event) => event.preventDefault()}
+        onKeyDown={measuring ? undefined : (event) => {
+          if (!event.altKey || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return
+          event.preventDefault()
+          const index = names.indexOf(name)
+          const target = names[index + (event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1)]
+          if (target) onReorder(name, target)
+        }}
+        title={measuring ? undefined : 'Kéo để sắp xếp; Alt + phím mũi tên khi dùng bàn phím'}
+        onClick={measuring ? undefined : () => {
+          if (suppressClickRef.current) { suppressClickRef.current = false; return }
+          setOverflowOpen(false); onSelect(name)
+        }}
         aria-pressed={selected}
-        role={inList ? 'listitem' : undefined}
+        aria-roledescription={inList ? 'Tên nhóm' : undefined}
         tabIndex={measuring ? -1 : undefined}
       >{name}</button>
     )
@@ -469,6 +534,12 @@ function ToolbarIcon({ name }: { name: 'eye' | 'edit' | 'chart' | 'download' }) 
 }
 
 function App() {
+  const { preferences } = useAppPreferences()
+  useEditorViewport()
+  const [retentionBusy, setRetentionBusy] = useState(false)
+  const retentionRunningRef = useRef(false)
+  const retentionPreferencesRef = useRef(preferences)
+  useEffect(() => { retentionPreferencesRef.current = preferences }, [preferences])
   const {
     offlineReady: [offlineReady, setOfflineReady],
     needRefresh: [needRefresh, setNeedRefresh],
@@ -496,7 +567,7 @@ function App() {
   const [activeSettingTypeId, setActiveSettingTypeId] = useState<EntityId | null>(null)
   const [draftRowsByType, setDraftRowsByType] = useState<Record<string, DraftRow[]>>({})
   const [savedRowDrafts, setSavedRowDrafts] = useState<Record<string, SavedRowDraft>>({})
-  const draftListingInputRef = useRef<HTMLInputElement | null>(null)
+  const draftListingInputRef = useRef<HTMLTextAreaElement | null>(null)
   const [draftListingFocusToken, setDraftListingFocusToken] = useState(0)
   const [pageFitMode, setPageFitMode] = useState<'width' | 'page'>('width')
   const [zoom, setZoom] = useState(() => {
@@ -513,10 +584,6 @@ function App() {
   const [greetingFontFamily, setGreetingFontFamily] = useState('Arial, Helvetica, sans-serif')
   const [greetingColor, setGreetingColor] = useState('#34475e')
   const greetingInputRef = useRef<HTMLInputElement | null>(null)
-  // These are UI-only settings in this iteration. They do not activate PIN
-  // protection or retention/deletion behavior yet.
-  const [pinDraft, setPinDraft] = useState('')
-  const [retentionDaysDraft, setRetentionDaysDraft] = useState('13')
 
   const [dateDraft, setDateDraft] = useState(todayInputValue())
   const [newGroupName, setNewGroupName] = useState('')
@@ -537,8 +604,21 @@ function App() {
     '5': { coefficientD: '', coefficientT: '' },
   })
   const [typeSettingsOpen, setTypeSettingsOpen] = useState(false)
+  const [publisherPromptOpen, setPublisherPromptOpen] = useState(false)
+  const [publisherAuthorized, setPublisherAuthorized] = useState(false)
+  const [entryDock, setEntryDock] = useState<EntryTarget | null>(null)
+  const groupDragRef = useRef<{ source: string; target: string } | null>(null)
+  const [draggingGroupName, setDraggingGroupName] = useState('')
+  const [dropGroupName, setDropGroupName] = useState('')
   const [draggingTypeId, setDraggingTypeId] = useState<EntityId | null>(null)
   const [typeDropTargetId, setTypeDropTargetId] = useState<EntityId | null>(null)
+  useEffect(() => {
+    const closePrivatePanels = () => { setPublisherAuthorized(false); setTypeSettingsOpen(false); setPublisherPromptOpen(false); setEntryDock(null) }
+    const onHidden = () => { if (document.visibilityState === 'hidden') closePrivatePanels() }
+    document.addEventListener('visibilitychange', onHidden)
+    window.addEventListener('pagehide', closePrivatePanels)
+    return () => { document.removeEventListener('visibilitychange', onHidden); window.removeEventListener('pagehide', closePrivatePanels) }
+  }, [])
   const lastWorkspaceSnapshotSignatureRef = useRef('')
   const workspaceSaveRevisionRef = useRef(0)
   const lastQuickSettingsSignatureRef = useRef('')
@@ -586,9 +666,17 @@ function App() {
           && Boolean(quickValue.greeting)
           ? quickValue
           : null
-        const workspace = workspaceResult?.value ?? null
+        let workspace = workspaceResult?.value ?? null
+        if (workspace && loadErrors.length === 0) {
+          const retained = applyRetention(workspace, retentionPreferencesRef.current)
+          if (retained.removedCount > 0) {
+            await saveCalculationWorkspace(retained.workspace)
+            if (cancelled) return
+            workspace = retained.workspace
+          }
+        }
         const baseData = workspace?.data ?? createCalculationDataV2()
-        const mergedData = mergeQuickSettingsIntoCalculationData(baseData, loadedQuickSettings)
+        const mergedData = initializeCoefficientDefaults(mergeQuickSettingsIntoCalculationData(baseData, loadedQuickSettings))
         const editor = workspace?.editorState
 
         if (loadErrors.length) {
@@ -688,11 +776,8 @@ function App() {
   const configuredGroup2NameKeys = useMemo(() => new Set(data.groups1.flatMap((group1) => group1.groups2
     .filter((group2) => group2.groups3.length > 0)
     .map((group2) => group2NameKey(group2.name)))), [data.groups1])
-  // Render configured names first, then the remaining quick names in recency order.
-  const group2PickerNames = useMemo(() => [
-    ...groupNameSuggestions.filter((name) => configuredGroup2NameKeys.has(group2NameKey(name))),
-    ...groupNameSuggestions.filter((name) => !configuredGroup2NameKeys.has(group2NameKey(name))),
-  ], [groupNameSuggestions, configuredGroup2NameKeys])
+  // User drag order takes priority; colors still identify configured names.
+  const group2PickerNames = groupNameSuggestions
   const selectedGroup2NameKey = selectedGroup2 ? group2NameKey(selectedGroup2.name) : ''
 
   const drawOneToSevenCount = countDelimitedValues(drawOneToSeven)
@@ -710,17 +795,25 @@ function App() {
     return { mode: 'combined', group1Id: selectedGroup1Id }
   }, [a4Mode, selectedGroup1Id, selectedGroup2Id])
 
+  const entryDockGroup = entryDock ? data.groups1.find((page) => page.id === entryDock.group1Id)?.groups2.find((group) => group.id === entryDock.group2Id) : null
+  const entryDockType = entryDock ? data.settingTypes.find((type) => type.id === entryDock.typeId) : null
+  const entryDockSaved = entryDock?.mode === 'saved' ? entryDockGroup?.groups3.find((row) => row.id === entryDock.rowId) : null
+  const entryDockRow = entryDock?.mode === 'draft'
+    ? draftRowsByType[`${entryDock.group2Id}:${entryDock.typeId}`]?.find((row) => row.id === entryDock.rowId) ?? null
+    : entryDockSaved ? savedRowDrafts[entryDockSaved.id] ?? entryDockSaved : null
+  const previewData = useMemo(() => buildEntryPreview(data, entryDock, entryDockRow ? { listing: entryDockRow.listing, point: entryDockRow.point } : null), [data, entryDock, entryDockRow])
+
   const projectionState = useMemo(() => {
     if (!a4Selection) return { projection: null, error: '' }
     try {
-      return { projection: buildA4ProjectionV2(data, a4Selection), error: '' }
+      return { projection: buildA4ProjectionV2(previewData, a4Selection), error: '' }
     } catch (error) {
       return {
         projection: null,
         error: error instanceof Error ? error.message : 'Không thể tạo A4.',
       }
     }
-  }, [a4Selection, data])
+  }, [a4Selection, previewData])
 
   const calculationState = useMemo(() => {
     if (!calculationEnabled || !a4Selection) return { workspace: null, error: '' }
@@ -791,7 +884,7 @@ function App() {
   const currentWorkspaceSignature = JSON.stringify(currentWorkspaceSnapshot)
 
   useEffect(() => {
-    if (!persistenceReady || !storageAvailable) return
+    if (!persistenceReady || !storageAvailable || retentionBusy) return
     const signature = JSON.stringify(quickSettingsSnapshot)
     if (signature === lastQuickSettingsSignatureRef.current) return
     const timeout = window.setTimeout(() => {
@@ -802,10 +895,10 @@ function App() {
       })
     }, 600)
     return () => window.clearTimeout(timeout)
-  }, [persistenceReady, storageAvailable, quickSettingsSnapshot])
+  }, [persistenceReady, storageAvailable, retentionBusy, quickSettingsSnapshot])
 
   useEffect(() => {
-    if (!persistenceReady || !storageAvailable) return
+    if (!persistenceReady || !storageAvailable || retentionBusy) return
     if (currentWorkspaceSignature === lastWorkspaceSnapshotSignatureRef.current) return
     const revision = ++workspaceSaveRevisionRef.current
     const timeout = window.setTimeout(() => {
@@ -819,10 +912,10 @@ function App() {
       })
     }, 600)
     return () => window.clearTimeout(timeout)
-  }, [persistenceReady, storageAvailable, currentWorkspaceSnapshot, currentWorkspaceSignature])
+  }, [persistenceReady, storageAvailable, retentionBusy, currentWorkspaceSnapshot, currentWorkspaceSignature])
 
   useEffect(() => {
-    if (!persistenceReady || !storageAvailable) return
+    if (!persistenceReady || !storageAvailable || retentionBusy) return
     const flushWorkspace = () => {
       if (currentWorkspaceSignature === lastWorkspaceSnapshotSignatureRef.current) return
       const revision = ++workspaceSaveRevisionRef.current
@@ -842,10 +935,10 @@ function App() {
       window.removeEventListener('pagehide', flushWorkspace)
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }
-  }, [persistenceReady, storageAvailable, currentWorkspaceSnapshot, currentWorkspaceSignature])
+  }, [persistenceReady, storageAvailable, retentionBusy, currentWorkspaceSnapshot, currentWorkspaceSignature])
 
   useEffect(() => {
-    if (!persistenceReady || !storageAvailable) return
+    if (!persistenceReady || !storageAvailable || retentionBusy) return
     const signature = JSON.stringify(quickSettingsSnapshot)
     const flushQuickSettings = () => {
       if (signature === lastQuickSettingsSignatureRef.current) return
@@ -862,7 +955,7 @@ function App() {
       window.removeEventListener('pagehide', flushQuickSettings)
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }
-  }, [persistenceReady, storageAvailable, quickSettingsSnapshot])
+  }, [persistenceReady, storageAvailable, retentionBusy, quickSettingsSnapshot])
 
   const activeDraftKey = selectedGroup2 && activeSettingType
     ? `${selectedGroup2.id}:${activeSettingType.id}`
@@ -873,17 +966,54 @@ function App() {
     : []
 
   useEffect(() => {
+    if (!persistenceReady || !storageAvailable || !preferences.retention.enabled) return
+    let disposed = false
+    const prune = async () => {
+      if (disposed || retentionRunningRef.current) return
+      const retained = applyRetention(currentWorkspaceSnapshot, preferences)
+      if (!retained.removedCount) return
+      retentionRunningRef.current = true
+      setRetentionBusy(true)
+      try {
+        await saveCalculationWorkspace(retained.workspace)
+        if (disposed) return
+        setData(retained.workspace.data)
+        setDraftRowsByType(retained.workspace.editorState.draftRowsByType)
+        setSavedRowDrafts(retained.workspace.editorState.savedRowDrafts)
+        if (currentWorkspaceSnapshot.editorState.selectedGroup1Id && !retained.workspace.editorState.selectedGroup1Id) {
+          setEntryDock(null)
+          setSelectedGroup1Id(null); setSelectedGroup2Id(null); setActiveSettingTypeId(null)
+          setA4Mode('combined'); setDrawOneToSeven(''); setDrawGdb(''); setDrawDraftGroup1Id(null)
+          setDateDraft(todayInputValue()); setNewGroupName(''); setShowNewGroupInput(false)
+          setCalculationEnabled(false); setActivePanel(null); setManagementPanel(null)
+          setScreen('home'); setToolbarVisible(false)
+        }
+      } catch (error) {
+        if (!disposed) setStorageError(error instanceof Error ? error.message : 'Không thể dọn A4 hết hạn.')
+      } finally {
+        retentionRunningRef.current = false
+        setRetentionBusy(false)
+      }
+    }
+    const onVisible = () => { if (document.visibilityState === 'visible') void prune() }
+    void prune()
+    const timer = window.setInterval(() => void prune(), 60000)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { disposed = true; window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisible) }
+  }, [currentWorkspaceSnapshot, preferences, persistenceReady, storageAvailable])
+
+  useEffect(() => {
     if (draftListingFocusToken === 0 || !activeSettingTypeId || !selectedGroup2Id) return
     const frame = window.requestAnimationFrame(() => {
       const input = draftListingInputRef.current
       if (!input) return
-      input.focus()
-      input.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      input.focus({ preventScroll: true })
     })
     return () => window.cancelAnimationFrame(frame)
   }, [draftListingFocusToken, activeSettingTypeId, selectedGroup2Id, selectedDraftRows.length])
 
   function returnToLibrary() {
+    setEntryDock(null)
     if (activePanel === 'results' && !persistDrawDataDraft()) return
     // Keep the current A4 and editor state. The library view is only a screen
     // change; it must never delete an empty or unfinished A4 record.
@@ -892,6 +1022,7 @@ function App() {
   }
 
   function handlePageBack() {
+    setEntryDock(null)
     // Back from an individual Group2 view returns to the same A4 in combined mode.
     if (screen === 'page' && a4Mode === 'group2') {
       setA4Mode('combined')
@@ -967,12 +1098,14 @@ function App() {
     setSuccessMessage('')
   }
 
-  function runAction(action: () => void) {
+  function runAction(action: () => void): boolean {
     clearFeedback()
     try {
       action()
+      return true
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Không thể thực hiện thao tác.')
+      return false
     }
   }
 
@@ -1041,6 +1174,7 @@ function App() {
 
   function chooseView(mode: 'combined' | 'group2', group2Id?: EntityId) {
     if (mode === 'group2' && !group2Id) return
+    setEntryDock(null)
     // Entering a view (including a specific Group2) always starts at fit-width.
     resetPageToWidthFit()
     setA4Mode(mode)
@@ -1049,6 +1183,12 @@ function App() {
     setActivePanel(null)
     setManagementPanel(null)
     clearFeedback()
+  }
+
+  function reorderGroup2Names(source: string, target: string) {
+    const names = moveGroup2Name(groupNameSuggestions, source, target)
+    setQuickGroup2Suggestions(names)
+    setData((current) => orderGroups2(current, names))
   }
 
   function chooseGroup2ByName(name: string) {
@@ -1151,6 +1291,26 @@ function App() {
         setActiveSettingTypeId(null)
       }
     })
+  }
+
+  function startGroupNameDrag(event: ReactPointerEvent<HTMLButtonElement>, name: string) {
+    if (event.button !== 0) return
+    event.preventDefault()
+    groupDragRef.current = { source: name, target: name }
+    setDraggingGroupName(name); setDropGroupName(name)
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  function trackGroupNameDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (!groupDragRef.current) return
+    const name = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-sort-group-name]')?.dataset.sortGroupName
+    if (name) { groupDragRef.current.target = name; setDropGroupName(name) }
+  }
+
+  function finishGroupNameDrag(cancelled = false) {
+    const drag = groupDragRef.current
+    groupDragRef.current = null; setDraggingGroupName(''); setDropGroupName('')
+    if (drag && !cancelled) reorderGroup2Names(drag.source, drag.target)
   }
 
   function startSettingTypeDrag(event: ReactPointerEvent<HTMLButtonElement>, typeId: EntityId) {
@@ -1264,10 +1424,10 @@ function App() {
       const nextData = addGroup3V2(data, selectedGroup1.id, selectedGroup2.id, group3)
       setData(nextData)
       const nextType = nextData.settingTypes.find((item) => item.id === typeId) ?? type
-      setDraftRowsByType((current) => {
-        return { ...current, [draftKey]: [createDraftRow(nextType)] }
-      })
-      setDraftListingFocusToken((current) => current + 1)
+      const nextDraft = createDraftRow(nextType)
+      setDraftRowsByType((current) => ({ ...current, [draftKey]: [nextDraft] }))
+      if (entryDock?.mode === 'draft') setEntryDock({ ...entryDock, rowId: nextDraft.id, field: 'listing' })
+      else setDraftListingFocusToken((current) => current + 1)
       setSuccessMessage('')
     })
   }
@@ -1430,6 +1590,8 @@ function App() {
 
   function openTypesManagement() {
     setTypeSettingsOpen(false)
+    setPublisherAuthorized(false)
+    setPublisherPromptOpen(false)
     const first = data.settingTypes[0]
     if (first) {
       setEditingTypeId(first.id)
@@ -1490,6 +1652,7 @@ function App() {
       ? countCoefficientsChanged
       : nextD !== currentD || nextT !== currentT
     if (!nameChanged && !coefficientChanged) return true
+    if (coefficientChanged && !publisherAuthorized) { setErrorMessage('Cần PIN nhà phát hành để thay hệ số.'); return false }
 
     try {
       let updated = renameSettingType(data, editingType.id, nextName)
@@ -1566,6 +1729,7 @@ function App() {
   }
 
   function resetSettingTypeName() {
+    if (!publisherAuthorized) { setPublisherPromptOpen(true); return }
     const currentEditingType = data.settingTypes.find((item) => item.id === editingTypeId)
     if (!currentEditingType) return
 
@@ -1600,12 +1764,15 @@ function App() {
   function closeTypeSettings() {
     if (!persistEditingType()) return
     setTypeSettingsOpen(false)
+    setPublisherAuthorized(false)
   }
 
   function closeManagementPanel() {
     if (managementPanel === 'types' && !persistEditingType()) return
     if (managementPanel === 'date' && !persistDateDraft()) return
     setTypeSettingsOpen(false)
+    setPublisherAuthorized(false)
+    setPublisherPromptOpen(false)
     setManagementPanel(null)
   }
 
@@ -1670,13 +1837,40 @@ function App() {
     }
   }
 
+  function openEntryDock(mode: 'saved' | 'draft', rowId: string, typeId: string, field: 'listing' | 'point' = 'listing') {
+    if (!selectedGroup1 || !selectedGroup2) return
+    clearFeedback()
+    setEntryDock({ mode, rowId, typeId, group1Id: selectedGroup1.id, group2Id: selectedGroup2.id, field })
+  }
+
+  function updateEntryDock(field: 'listing' | 'point', value: string) {
+    if (!entryDock) return
+    if (entryDock.mode === 'draft') updateDraftField(entryDock.typeId, entryDock.rowId, field, value)
+    else if (entryDockSaved) updateSavedGroup3(entryDockSaved, field, value)
+  }
+
+  function commitEntryDock() {
+    if (!entryDock || !entryDockRow || !entryDockType) return
+    if (!entryDockRow.listing.trim()) { setErrorMessage('Hãy nhập danh sách số.'); return }
+    if (entryDock.mode === 'draft') commitDraftRow(entryDock.typeId, entryDock.rowId)
+    else if (entryDockSaved) {
+      try {
+        parseSettingNumberListV2(entryDockRow.listing, entryDockType.formulaId)
+        parsePointTextV2(entryDockRow.point)
+      } catch (error) { setErrorMessage(error instanceof Error ? error.message : 'Dữ liệu chưa hợp lệ.'); return }
+      commitSavedGroup3(entryDockSaved)
+      setEntryDock(null)
+    }
+  }
+
   function closeNotice() {
     setOfflineReady(false)
     setNeedRefresh(false)
   }
 
   return (
-    <main className={screen === 'page' ? 'app-shell app-shell-page' : 'app-shell'}>
+    <main className={`${screen === 'page' ? 'app-shell app-shell-page' : 'app-shell'}${entryDock ? ' is-entry-docked' : ''}`}>
+      {publisherPromptOpen && <PublisherPrompt onClose={() => setPublisherPromptOpen(false)} onUnlock={() => { setPublisherPromptOpen(false); setPublisherAuthorized(true); setTypeSettingsOpen(true) }} />}
       {screen === 'page' && (
         <>
           <header className="app-header page-desktop-header">
@@ -1819,23 +2013,9 @@ function App() {
                   </div>
                 )}
 
-                {homeSettingsSection === 'pin' && (
-                  <div className="sheet-content compact-form home-settings-detail">
-                    <label>Mã PIN<input type="password" inputMode="numeric" maxLength={4} value={pinDraft} onChange={(event) => setPinDraft(event.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="Chưa thiết lập" /></label>
-                    <p className="settings-disabled-note">Giao diện PIN đang ở chế độ chuẩn bị; chức năng bảo vệ chưa được kích hoạt.</p>
-                  </div>
-                )}
+                {homeSettingsSection === 'pin' && <PinSettings />}
 
-                {homeSettingsSection === 'retention' && (
-                  <div className="sheet-content compact-form home-settings-detail storage-settings-detail">
-                    <label>Số ngày lưu trữ<input type="number" min="1" max="3650" value={retentionDaysDraft} onChange={(event) => setRetentionDaysDraft(event.target.value)} /></label>
-                    <p className="settings-disabled-note">Thời hạn tự xóa chưa được kích hoạt.</p>
-                    <section className="manual-calculation-save">
-                      <strong>Lưu trữ dữ liệu A4</strong>
-                      <p>Toàn bộ A4 và nội dung đang nhập dở được tự động lưu vào kho mã hóa trên thiết bị. Không cần bấm nút lưu dữ liệu. Nút Lưu trên taskbar chỉ dùng để xuất ảnh JPG của A4 đang hiển thị.</p>
-                    </section>
-                  </div>
-                )}
+                {homeSettingsSection === 'retention' && <RetentionSettings data={data} />}
               </section>
             </div>
           )}
@@ -1892,9 +2072,9 @@ function App() {
                 <A4PageV2
                   projection={projectionState.projection}
                   centerInViewport={pageFitMode === 'page'}
-                  summary={calculationState.workspace?.summary}
-                  results={calculationState.workspace?.settingResults ?? EMPTY_RESULTS}
-                  showCalculation={calculationEnabled}
+                  summary={entryDock ? undefined : calculationState.workspace?.summary}
+                  results={entryDock ? EMPTY_RESULTS : calculationState.workspace?.settingResults ?? EMPTY_RESULTS}
+                  showCalculation={calculationEnabled && !entryDock}
                   zoom={zoom}
                   onZoomChange={setZoom}
                 />
@@ -1905,7 +2085,7 @@ function App() {
           </div>
 
           {toolbarVisible && activePanel && (
-            <aside className="editor-sheet" aria-label="Bảng công cụ">
+            <aside className="editor-sheet" hidden={Boolean(entryDock)} aria-label="Bảng công cụ">
               <div className="sheet-header">
                 <h2>{activePanel === 'edit' ? 'Sửa' : activePanel === 'results' ? 'Kết quả' : 'Xem'}</h2>
                 <button className="sheet-close" type="button" onClick={closeActivePanel} aria-label="Đóng">×</button>
@@ -1924,6 +2104,7 @@ function App() {
                       configuredNameKeys={configuredGroup2NameKeys}
                       activeNameKey={selectedGroup2NameKey}
                       onSelect={chooseGroup2ByName}
+                      onReorder={reorderGroup2Names}
                       onAdd={() => setShowNewGroupInput((value) => !value)}
                       onEdit={() => setManagementPanel('groups')}
                     />
@@ -1967,13 +2148,14 @@ function App() {
                                 className="setting-row"
                                 key={group3.id}
                                 onBlur={(event) => {
+                                  if (entryDock) return
                                   const nextTarget = event.relatedTarget as Node | null
                                   if (!nextTarget || !event.currentTarget.contains(nextTarget)) commitSavedGroup3(group3)
                                 }}
                               >
                                 <div className="setting-line">
-                                <input className="listing-input" value={currentDraft.listing} onChange={(event) => updateSavedGroup3(group3, 'listing', event.target.value)} onBlur={() => { try { const savedType = data.settingTypes.find((item) => item.id === group3.settingTypeId); updateSavedGroup3(group3, 'listing', parseSettingNumberListV2(currentDraft.listing, savedType?.formulaId).join(', ')) } catch { /* Keep invalid input visible. */ } }} aria-label="Liệt kê" />
-                                  <input className="point-input" value={currentDraft.point} onChange={(event) => updateSavedGroup3(group3, 'point', event.target.value)} placeholder="Điểm" aria-label="Điểm" inputMode="numeric" />
+                                <ListingInput onFocus={() => openEntryDock('saved', group3.id, activeSettingType.id)} value={currentDraft.listing} onChange={(value) => updateSavedGroup3(group3, 'listing', value)} onBlur={() => { try { const savedType = data.settingTypes.find((item) => item.id === group3.settingTypeId); updateSavedGroup3(group3, 'listing', parseSettingNumberListV2(currentDraft.listing, savedType?.formulaId).join(', ')) } catch { /* Keep invalid input visible. */ } }} label="Liệt kê" />
+                                  <input onFocus={() => openEntryDock('saved', group3.id, activeSettingType.id, 'point')} className="point-input" value={currentDraft.point} onChange={(event) => updateSavedGroup3(group3, 'point', event.target.value)} placeholder="Điểm" aria-label="Điểm" inputMode="numeric" />
                                   <button className="icon-button danger-icon" type="button" onClick={() => removeGroup3(group3.id)} aria-label="Xóa thiết lập">×</button>
                                 </div>
                               </div>
@@ -1983,9 +2165,9 @@ function App() {
                           {selectedDraftRows.map((row) => (
                             <div className="setting-row draft-setting-row" key={row.id}>
                               <div className="setting-line draft-setting-line">
-                                <input ref={draftListingInputRef} className="listing-input" value={row.listing} onChange={(event) => updateDraftField(activeSettingType.id, row.id, 'listing', event.target.value)} onBlur={() => normalizeDraftListing(activeSettingType.id, row.id, row.listing)} aria-label="Danh sách thiết lập" />
+                                <ListingInput onFocus={() => openEntryDock('draft', row.id, activeSettingType.id)} inputRef={draftListingInputRef} value={row.listing} onChange={(value) => updateDraftField(activeSettingType.id, row.id, 'listing', value)} onBlur={() => normalizeDraftListing(activeSettingType.id, row.id, row.listing)} label="Danh sách thiết lập" />
                                 <span className="point-label">Điểm</span>
-                                <input className="point-input" value={row.point} onChange={(event) => updateDraftField(activeSettingType.id, row.id, 'point', event.target.value)} aria-label="Điểm" inputMode="numeric" />
+                                <input onFocus={() => openEntryDock('draft', row.id, activeSettingType.id, 'point')} className="point-input" value={row.point} onChange={(event) => updateDraftField(activeSettingType.id, row.id, 'point', event.target.value)} aria-label="Điểm" inputMode="numeric" />
                                 <button className="button-primary add-setting-button" type="button" onClick={() => commitDraftRow(activeSettingType.id, row.id)}>Thêm</button>
                               </div>
                             </div>
@@ -2049,7 +2231,8 @@ function App() {
                       const hasDraft = group2NameHasUncommittedInput(name)
                       const canDelete = !hasSettings && !hasDraft
                       return (
-                        <div className="management-item quick-group-management-item" key={name}>
+                        <div className={`management-item quick-group-management-item draggable-group-row${draggingGroupName === name ? ' is-dragging' : ''}${dropGroupName === name && draggingGroupName ? ' is-drop-target' : ''}`} data-sort-group-name={name} key={name}>
+                          <button className="drag-handle" type="button" onPointerDown={(event) => startGroupNameDrag(event, name)} onPointerMove={trackGroupNameDrag} onPointerUp={() => finishGroupNameDrag()} onPointerCancel={() => finishGroupNameDrag(true)} aria-label={`Kéo để sắp xếp tên ${name}`} title="Kéo để sắp xếp"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="6" r="1.4"/><circle cx="16" cy="6" r="1.4"/><circle cx="8" cy="12" r="1.4"/><circle cx="16" cy="12" r="1.4"/><circle cx="8" cy="18" r="1.4"/><circle cx="16" cy="18" r="1.4"/></svg></button>
                           <span>{name}</span>
                           <button
                             className="icon-button danger-icon"
@@ -2079,7 +2262,7 @@ function App() {
                           <button
                             className="icon-button type-settings-button"
                             type="button"
-                            onClick={() => setTypeSettingsOpen(true)}
+                            onClick={() => { setPublisherAuthorized(false); setPublisherPromptOpen(true) }}
                             aria-label={`Cài đặt ${editingType.name}`}
                             title="Cài đặt hệ số và tên mặc định"
                           >⚙</button>
@@ -2109,7 +2292,7 @@ function App() {
                     </div>
                   </div>
                 )}
-                {managementPanel === 'types' && typeSettingsOpen && editingType && (
+                {managementPanel === 'types' && typeSettingsOpen && publisherAuthorized && editingType && (
                   <div className="type-settings-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeTypeSettings() }}>
                     <section className="type-settings-window" role="dialog" aria-modal="true" aria-label={`Cài đặt ${editingType.name}`}>
                       <div className="sheet-header">
@@ -2193,9 +2376,17 @@ function App() {
         <section className="home-screen"><p>Không tìm thấy A4.</p></section>
       )}
 
-      {storageHydrating && (
+      {entryDock && entryDockRow && entryDockType && screen === 'page' && <EntryDock
+        rowId={entryDock.rowId} initialField={entryDock.field}
+        title={`${entryDockGroup?.name ?? ''} · ${entryDockType.name}`}
+        listing={entryDockRow.listing} point={entryDockRow.point} saved={entryDock.mode === 'saved'}
+        onListing={(value) => updateEntryDock('listing', value)} onPoint={(value) => updateEntryDock('point', value)}
+        onCommit={commitEntryDock} onClose={() => setEntryDock(null)} error={errorMessage}
+      />}
+
+      {(storageHydrating || retentionBusy) && (
         <div className="vault-loading-backdrop" role="status" aria-live="polite">
-          <section className="vault-prompt"><span className="vault-spinner" /><strong>Đang mở dữ liệu đã mã hóa…</strong></section>
+          <section className="vault-prompt"><span className="vault-spinner" /><strong>{retentionBusy ? 'Đang dọn A4 hết hạn…' : 'Đang mở dữ liệu đã mã hóa…'}</strong></section>
         </div>
       )}
 

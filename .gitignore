@@ -22,22 +22,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-# Environment and private files
-.env
-.env.*
-!.env.example
-*.pem
-*.key
-
-# Local backups
-backup/
-backups/
-*.bak
-*.backup
-
-# Local-only patch notes
-/README.txt
-/PATCH-FIX-NOTES.txt
-/PATCH-INSTALL-NOTES.txt
-/PATCH-NOTES-11.txt

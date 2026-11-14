@@ -1,0 +1,25 @@
+ĐẹpGái — bản cập nhật lần 2, 14/11/2026
+Node.js 24.22.1
+npm run build: ĐẠT
+npm run lint: ĐẠT
+npm test: 223/223 kiểm thử, 18 tệp, ĐẠT
+
+Kiểm tra mới:
+- Thanh nhập trên A4, bản xem nháp không sửa cây dữ liệu trước khi thêm/lưu.
+- Enter chuyển Liệt kê sang Điểm; Enter ở Điểm thêm/lưu; tiếp tục dòng mới.
+- Kéo trực tiếp thẻ tên và kéo tay nắm trong danh sách tên nhóm 2.
+- Hệ số mặc định 1 cho 8 công thức và các profile; giữ hệ số đã sửa và số 0.
+- PIN nhập hiện rõ 4 ký tự; PIN mở app 1495 độc lập PIN cài hệ số 1945.
+- Cửa sổ hệ số/Reset tên được khóa lại khi đóng hoặc chuyển nền.
+- Xóa sau 3 lần sai, giữ tên/hệ số, dọn cả nháp và record legacy.
+- Chờ autosave trước khi xóa, không tái xuất hiện A4 sau khi xóa.
+- Giao dịch xóa rollback khi giả lập lỗi lưu; marker giữ lại để thử lại.
+- Tiếp tục dọn sau gián đoạn trước khi cho mở dữ liệu.
+
+Kiểm thử dùng DOM/IndexedDB/Canvas giả lập. Chưa kiểm tra bàn phím hoặc ảnh giao diện trên điện thoại thật. Dependency không đổi so với bản trước.
+
+Bổ sung GitHub Pages:
+- Build tại /dangyeu/, chạy dev tại /.
+- Kiểm tra HTTP dưới mount /dangyeu/: 5 tài nguyên HTML, 3 icon manifest và 17 URL precache đều HTTP 200.
+- Giữ workflow hiện có từ xjnhgai/dangyeu; chỉ cập nhật tên hiển thị.
+- Chưa đẩy code hoặc triển khai lên GitHub; người dùng thực hiện Commit/Push qua VS Code.

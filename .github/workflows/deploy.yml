@@ -1,5 +1,5 @@
-# Build, test, and publish CalculatorApp-PWA to GitHub Pages.
-name: Deploy xinhgai to GitHub Pages
+# Build, test, and publish DepGai to GitHub Pages.
+name: Deploy DepGai to GitHub Pages
 
 on:
   push:

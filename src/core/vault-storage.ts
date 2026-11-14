@@ -1,4 +1,6 @@
+import { createCalculationDataV2 } from './tree-v2'
 import type { CalculationDataV2, EntityId, SettingTypeDefinition } from './models-v2'
+import { defaultAppPreferences, validateAppPreferences, type AppPreferences } from './app-preferences'
 
 /**
  * `icons` is retained only so old Quick Settings records can be migrated.
@@ -252,32 +254,24 @@ function additionalData(storeName: DataStoreName, recordId: string): ArrayBuffer
   return toArrayBuffer(encoder.encode(`${DATABASE_NAME}:${storeName}:${recordId}:v1`))
 }
 
+async function prepareEncryptedRecord<T>(db: IDBDatabase, storeName: DataStoreName, recordId: string, keyId: KeyId, value: T): Promise<EncryptedRecord> {
+  const key = await getOrCreateKey(db, keyId, storeName)
+  const iv = toArrayBuffer(crypto.getRandomValues(new Uint8Array(12)))
+  const plaintext = toArrayBuffer(encoder.encode(JSON.stringify(value)))
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: additionalData(storeName, recordId) }, key, plaintext)
+  return { id: recordId, version: 1, iv, ciphertext, updatedAt: Date.now() }
+}
+
 async function writeEncrypted<T>(storeName: DataStoreName, recordId: string, keyId: KeyId, value: T): Promise<number> {
   const db = await openVaultDatabase()
   try {
-    const key = await getOrCreateKey(db, keyId, storeName)
-    const iv = toArrayBuffer(crypto.getRandomValues(new Uint8Array(12)))
-    const plaintext = toArrayBuffer(encoder.encode(JSON.stringify(value)))
-    const ciphertext = await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv, additionalData: additionalData(storeName, recordId) },
-      key,
-      plaintext,
-    )
-    const updatedAt = Date.now()
+    const record = await prepareEncryptedRecord(db, storeName, recordId, keyId, value)
     const tx = db.transaction(storeName, 'readwrite')
     const done = transactionDone(tx)
-    tx.objectStore(storeName).put({
-      id: recordId,
-      version: 1,
-      iv,
-      ciphertext,
-      updatedAt,
-    } satisfies EncryptedRecord)
+    tx.objectStore(storeName).put(record)
     await done
-    return updatedAt
-  } finally {
-    db.close()
-  }
+    return record.updatedAt
+  } finally { db.close() }
 }
 
 async function readEncrypted<T>(storeName: DataStoreName, recordId: string, keyId: KeyId): Promise<{ value: T; updatedAt: number } | null> {
@@ -313,6 +307,17 @@ export async function loadQuickSettings(): Promise<{ value: QuickSettingsV2; upd
 
 export function saveQuickSettings(value: QuickSettingsV2): Promise<number> {
   return enqueueVaultWrite(() => writeEncrypted(QUICK_SETTINGS_STORE, 'current', 'quick-settings', value))
+}
+
+/** Read optional app protection settings without changing existing vault keys. */
+export async function loadAppPreferences(): Promise<AppPreferences> {
+  const record = await readEncrypted<unknown>(QUICK_SETTINGS_STORE, 'app-preferences', 'quick-settings')
+  return record ? validateAppPreferences(record.value) : defaultAppPreferences()
+}
+
+export function saveAppPreferences(value: AppPreferences): Promise<number> {
+  const validated = validateAppPreferences(value)
+  return enqueueVaultWrite(() => writeEncrypted(QUICK_SETTINGS_STORE, 'app-preferences', 'quick-settings', validated))
 }
 
 function isCalculationData(value: unknown): value is CalculationDataV2 {
@@ -552,4 +557,56 @@ export function createQuickSettingsSnapshot(
 export function formatStorageTimestamp(timestamp: number | null): string {
   if (!timestamp) return 'Chưa có bản lưu'
   return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(timestamp))
+}
+
+/**
+ * Queue behind prior autosaves, then atomically replace all A4/legacy records.
+ * Keys, the coefficient catalog, name suggestions and app preferences survive.
+ * A pending-wipe marker is persisted by the caller before entering this method.
+ */
+export function wipeCalculationEntries(preferences: AppPreferences): Promise<AppPreferences> {
+  return enqueueVaultWrite(async () => {
+    const current = await readEncrypted<CalculationWorkspaceV2>(CALCULATION_DATA_STORE, WORKSPACE_RECORD_ID, 'calculation-data')
+    let workspace = current?.value ?? null
+    if (workspace && !isWorkspace(workspace)) throw new Error('Không thể xác minh dữ liệu A4 trước khi dọn.')
+    if (!workspace) {
+      const [saved, draft] = await Promise.all([
+        readEncrypted<StoredCalculationDataV2>(CALCULATION_DATA_STORE, 'saved', 'calculation-data'),
+        readEncrypted<CalculationDraftV2>(CALCULATION_DATA_STORE, 'draft', 'calculation-data'),
+      ])
+      workspace = createWorkspaceFromLegacyRecords(saved, draft)
+    }
+    const quickRecord = await loadQuickSettings()
+    const quick = quickRecord?.value ?? null
+    if (quick && (quick.schemaVersion !== 1 || !Array.isArray(quick.group2NameSuggestions) || !Array.isArray(quick.settingTypes))) throw new Error('Không thể xác minh danh sách tên và hệ số trước khi dọn.')
+    const data = mergeQuickSettingsIntoCalculationData(workspace?.data ?? createCalculationDataV2(), quick)
+    const names = [...(quick?.group2NameSuggestions ?? []), ...data.groups1.flatMap((page) => page.groups2.map((group) => group.name))]
+    const emptyWorkspace: CalculationWorkspaceV2 = {
+      schemaVersion: 2, data: { ...data, groups1: [] }, editorState: emptyEditorState(), updatedAt: Date.now(),
+    }
+    const snapshot = createQuickSettingsSnapshot(emptyWorkspace.data, names, normalizeGreetingSettings(quick?.greeting))
+    const nextPreferences: AppPreferences = { ...preferences, failedAttempts: 0, blockedUntil: 0, failurePolicyVersion: 2, wipePending: false }
+    const db = await openVaultDatabase()
+    try {
+      const records = await Promise.all([
+        prepareEncryptedRecord(db, CALCULATION_DATA_STORE, WORKSPACE_RECORD_ID, 'calculation-data', emptyWorkspace),
+        prepareEncryptedRecord(db, QUICK_SETTINGS_STORE, 'current', 'quick-settings', snapshot),
+        prepareEncryptedRecord(db, QUICK_SETTINGS_STORE, 'app-preferences', 'quick-settings', nextPreferences),
+      ])
+      const tx = db.transaction([CALCULATION_DATA_STORE, QUICK_SETTINGS_STORE], 'readwrite')
+      const done = transactionDone(tx)
+      try {
+        tx.objectStore(CALCULATION_DATA_STORE).clear()
+        tx.objectStore(CALCULATION_DATA_STORE).put(records[0])
+        tx.objectStore(QUICK_SETTINGS_STORE).put(records[1])
+        tx.objectStore(QUICK_SETTINGS_STORE).put(records[2])
+        await done
+      } catch (error) {
+        try { tx.abort() } catch { /* Already aborted by IndexedDB. */ }
+        await done.catch(() => undefined)
+        throw error
+      }
+      return nextPreferences
+    } finally { db.close() }
+  })
 }
