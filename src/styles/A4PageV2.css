@@ -1,0 +1,209 @@
+.a4-v2-scroll {
+  width: 100%;
+  min-width: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-x pan-y;
+  padding: 8px 4px 24px;
+}
+
+.a4-v2-zoom-frame {
+  position: relative;
+  margin: 0 auto;
+  flex: 0 0 auto;
+}
+
+.a4-v2-page {
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  width: 210mm;
+  height: auto;
+  min-height: 297mm;
+  overflow: visible;
+  margin: 0;
+  padding: 13mm 12mm;
+  transform-origin: top left;
+  color: #1d2734;
+  background: #fff;
+  box-shadow: 0 8px 28px rgb(28 43 62 / 12%);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+}
+
+.a4-v2-header {
+  margin: 0 0 20px;
+  text-align: center;
+}
+
+.a4-v2-header h1 {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 700;
+}
+
+.a4-v2-header h2 {
+  margin: 5px 0 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.a4-v2-sections {
+  display: grid;
+  /* The old thirds placed each type about 62 mm apart. 24.8 mm is 40% of that pitch. */
+  grid-template-columns: repeat(auto-fill, 24.8mm);
+  grid-auto-flow: row;
+  align-items: start;
+  column-gap: 0;
+  row-gap: 4px;
+}
+
+.a4-v2-section {
+  min-width: 0;
+  break-inside: avoid;
+}
+
+.a4-v2-section h3 {
+  margin: 0 0 8px;
+  padding-bottom: 5px;
+  border-bottom: 0;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.a4-v2-entry-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.a4-v2-entry {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 4px 0;
+  position: relative;
+  break-inside: avoid;
+}
+
+.a4-v2-entry-main {
+  display: grid;
+  width: max-content;
+  max-width: 100%;
+  grid-template-columns: max-content 1px max-content;
+  column-gap: .15ch;
+  align-items: stretch;
+}
+
+.a4-v2-listing {
+  display: flex;
+  grid-column: 1;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.a4-v2-number {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 17px;
+  overflow-wrap: anywhere;
+}
+
+.a4-v2-number.is-matched {
+  color: #c62828;
+  font-weight: 500;
+}
+
+.a4-v2-muted { color: #9ba4b0; }
+.a4-v2-entry-divider {
+  display: block;
+  grid-column: 2;
+  width: 1px;
+  min-height: 0;
+  align-self: stretch;
+  background: #1d2734;
+}
+.a4-v2-section-results {
+  display: flex;
+  min-height: 51px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0;
+  margin-top: 3px;
+  color: #1769aa;
+  font-size: 14px;
+  line-height: 17px;
+  white-space: nowrap;
+  visibility: hidden;
+}
+.a4-v2-section-results.is-visible { visibility: visible; }
+.a4-v2-result-point, .a4-v2-result-d, .a4-v2-result-t { color: #1769aa; display: flex; align-items: baseline; }
+.a4-v2-result-label { display: inline-block; width: 6ch; flex: 0 0 6ch; }
+.a4-v2-result-point b, .a4-v2-result-d b, .a4-v2-result-t b { font-weight: 400; }
+.a4-v2-point {
+  grid-column: 3;
+  min-width: 0;
+  align-self: center;
+  text-align: left;
+  padding: 0;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+}
+
+.a4-v2-total-area {
+  display: grid;
+  min-height: 66px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 25px;
+  padding-top: 12px;
+}
+
+.a4-v2-total-area > div { display: flex; flex-direction: column; gap: 4px; }
+.a4-v2-total-area span { color: #697689; font-size: 11px; }
+.a4-v2-total-area strong { font-size: 16px; font-weight: 400; }
+.a4-v2-total-area .a4-v2-difference { padding-top: 16px; }
+.a4-v2-total-area .a4-v2-difference strong { color: #1e4b7c; }
+.a4-v2-total-area.is-placeholder { visibility: hidden; }
+.a4-v2-empty { padding: 30px 10px; color: #8994a3; text-align: center; }
+
+@media print {
+  .a4-v2-scroll { padding: 0; overflow: visible; }
+  .a4-v2-zoom-frame { width: 210mm !important; height: 297mm !important; margin: 0; }
+  .a4-v2-page { width: 210mm; height: auto; min-height: 297mm; box-shadow: none; transform: none !important; }
+}
+
+/* The entry main grid isolates the listing divider and point from calculation rows. */
+
+
+@media (max-width: 760px) {
+  .a4-v2-scroll {
+    width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    padding: 0 0 calc(62px + env(safe-area-inset-bottom));
+    margin: 0;
+    overscroll-behavior: contain;
+  }
+
+  .a4-v2-zoom-frame {
+    margin: 0;
+  }
+}
+
+
+.a4-v2-scroll.is-fit-page {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
