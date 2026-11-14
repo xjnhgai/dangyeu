@@ -87,7 +87,7 @@ export function parseSettingNumberListV2(text: string, formulaId?: FormulaId): s
   if (invalid !== undefined || mixedWidths) {
     throw new WorkspaceCalculationV2Error('INVALID_LISTING', allowTwoOrThreeDigits
       ? 'ĐA/ĐB chỉ nhận danh sách toàn số 2 chữ số hoặc toàn số 3 chữ số; không được trộn hai loại.'
-      : `Số "${invalid}" không hợp lệ. Danh sách chỉ nhận số từ 00 đến 99.`)
+      : `Mục ${values.indexOf(invalid!) + 1}: "${invalid}" không hợp lệ (${invalid?.length} ký tự). ${formulaId?.toUpperCase() ?? "Thiết lập"} cần đúng 2 chữ số từ 00 đến 99, ví dụ 01, 12, 99. Tách các số bằng dấu phẩy, khoảng trắng hoặc xuống dòng; không nhập liền như 011299.`)
   }
   return values
 }

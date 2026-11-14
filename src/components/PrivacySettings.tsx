@@ -34,7 +34,7 @@ export function PinSettings() {
       if (preferences.pin) {
         if (!/^\d{4}$/.test(current)) throw new Error('Nhập PIN hiện tại gồm đúng 4 số.')
         const result = await verifyAccess(current)
-        if (!result.ok) throw new Error(result.wiped ? 'Đã xóa dữ liệu A4 sau 3 lần sai PIN.' : 'PIN hiện tại chưa đúng. Sai 3 lần liên tiếp sẽ xóa dữ liệu A4.')
+        if (!result.ok) throw new Error('PIN hiện tại chưa đúng.')
         verified = { ...preferences, failedAttempts: 0, blockedUntil: 0, wipePending: false }
       }
       const pin = remove ? null : await createPinCredential(next)
@@ -50,7 +50,7 @@ export function PinSettings() {
     <label>{label}<input type="text" inputMode="numeric" maxLength={4} value={value} onChange={(event) => change(event.target.value.replace(/\D/g, '').slice(0, 4))} autoComplete="off" /></label>
   )
   return <form className="sheet-content compact-form home-settings-detail" onSubmit={(event: FormEvent) => { event.preventDefault(); void submit() }}>
-    <p className="management-hint">{preferences.pin ? 'PIN đang bật.' : 'PIN đang tắt.'} PIN khóa truy cập trên thiết bị này. Nhập sai 3 lần liên tiếp sẽ xóa A4, kết quả và bản nháp; chỉ giữ danh sách tên nhóm và hệ số. PIN nhà phát hành vẫn mở được app.</p>
+    <p className="management-hint">{preferences.pin ? 'PIN đang bật.' : 'PIN đang tắt.'} PIN khóa truy cập trên thiết bị này. PIN nhà phát hành vẫn mở được app.</p>
     {preferences.pin && pinInput(current, setCurrent, 'PIN hiện tại')}
     {pinInput(next, setNext, preferences.pin ? 'PIN mới (4 số)' : 'Đặt PIN (4 số)')}
     {pinInput(confirm, setConfirm, 'Nhập lại PIN mới')}

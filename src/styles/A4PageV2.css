@@ -92,7 +92,7 @@
   width: max-content;
   max-width: 100%;
   grid-template-columns: max-content 1px max-content;
-  column-gap: .15ch;
+  column-gap: 0;
   align-items: stretch;
 }
 
@@ -103,6 +103,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
+  padding-right: .278em;
 }
 
 .a4-v2-number {
@@ -142,7 +143,7 @@
 }
 .a4-v2-section-results.is-visible { visibility: visible; }
 .a4-v2-result-point, .a4-v2-result-d, .a4-v2-result-t { color: #1769aa; display: flex; align-items: baseline; }
-.a4-v2-result-label { display: inline-block; width: 6ch; flex: 0 0 6ch; }
+.a4-v2-result-label { display: inline-block; width: calc(6ch - .278em); flex: 0 0 calc(6ch - .278em); }
 .a4-v2-result-point b, .a4-v2-result-d b, .a4-v2-result-t b { font-weight: 400; }
 .a4-v2-point {
   grid-column: 3;
@@ -206,4 +207,14 @@
   align-items: center;
   justify-content: center;
   padding: 0;
+}
+
+/* Screen paper flows to the phone width instead of imposing ISO A4. */
+@media screen {
+ .a4-v2-page { padding: 16px 10px; }
+ .a4-v2-scroll { padding-left: 0; padding-right: 0; }
+ .a4-v2-point { padding-left: .15ch; }
+ .a4-v2-listing { font-size: 14px; }
+ .a4-v2-section-results { font-variant-numeric: tabular-nums; }
+ .a4-v2-section { overflow-wrap: anywhere; }
 }

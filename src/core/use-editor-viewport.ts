@@ -8,6 +8,7 @@ export function useEditorViewport(): void {
       if (viewport && Math.abs(viewport.scale - 1) > 0.05) return
       const visibleHeight = viewport?.height ?? window.innerHeight
       const keyboardInset = Math.max(0, window.innerHeight - visibleHeight - (viewport?.offsetTop ?? 0))
+      document.documentElement.style.setProperty('--visual-top', `${viewport?.offsetTop ?? 0}px`)
       document.documentElement.style.setProperty('--visible-height', `${visibleHeight}px`)
       document.documentElement.style.setProperty('--keyboard-inset', `${keyboardInset}px`)
       document.documentElement.style.setProperty('--editor-bottom', `${keyboardInset + (keyboardInset > 100 ? 8 : 61)}px`)
@@ -20,7 +21,7 @@ export function useEditorViewport(): void {
       viewport?.removeEventListener('resize', update)
       viewport?.removeEventListener('scroll', update)
       window.removeEventListener('resize', update)
-      for (const name of ['--visible-height', '--keyboard-inset', '--editor-bottom']) document.documentElement.style.removeProperty(name)
+      for (const name of ['--visual-top', '--visible-height', '--keyboard-inset', '--editor-bottom']) document.documentElement.style.removeProperty(name)
     }
   }, [])
 }

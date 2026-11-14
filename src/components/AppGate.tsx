@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEditorViewport } from '../core/use-editor-viewport'
 import { checkPin, type AppPreferences } from '../core/app-preferences'
 import { PreferencesContext } from '../core/preferences-context'
 import { loadAppPreferences, saveAppPreferences, wipeCalculationEntries } from '../core/vault-storage'
 
 export default function AppGate({ children }: { children: ReactNode }) {
+  useEditorViewport()
   const [preferences, setPreferences] = useState<AppPreferences | null>(null)
   const [locked, setLocked] = useState(true)
   const [opened, setOpened] = useState(false)
@@ -69,7 +71,7 @@ export default function AppGate({ children }: { children: ReactNode }) {
         await updatePreferences(result.preferences)
         const cleared = await wipeCalculationEntries(result.preferences)
         setPreferences(cleared)
-        setError('Đã nhập sai PIN 3 lần. Toàn bộ A4 và nội dung nhập đã được xóa; danh sách tên nhóm và hệ số được giữ lại.')
+        setError('PIN chưa đúng.')
         return { ok: false, wiped: true }
       }
       await updatePreferences(result.preferences)
@@ -77,17 +79,16 @@ export default function AppGate({ children }: { children: ReactNode }) {
     } finally { verifyingRef.current = false; setBusy(false) }
   }, [preferences, updatePreferences])
 
-  async function unlock(event: FormEvent) {
-    event.preventDefault()
+  async function unlock(value: string) {
     if (!preferences?.pin || submittingRef.current) return
     submittingRef.current = true
     setBusy(true)
     setError('')
     try {
-      const result = await verifyAccess(pin)
+      const result = await verifyAccess(value)
       setPin('')
       if (!result.ok) {
-        if (!result.wiped) setError('PIN chưa đúng. Nhập sai 3 lần liên tiếp sẽ xóa dữ liệu A4.')
+        if (!result.wiped) setError('PIN chưa đúng.')
         return
       }
       setOpened(true)
@@ -111,14 +112,14 @@ export default function AppGate({ children }: { children: ReactNode }) {
   return <PreferencesContext.Provider value={{ preferences, updatePreferences, lockApp, verifyAccess }}>
     {opened && <div hidden={locked} inert={locked}>{children}</div>}
     {locked && <main className="pin-screen">
-      <form className="pin-card" onSubmit={(event) => void unlock(event)}>
+      <form className="pin-card" onSubmit={(event) => event.preventDefault()}>
         <img src={`${import.meta.env.BASE_URL}icons/icon-192.png`} width="80" height="80" alt="" />
-        <h1>ĐẹpGái</h1><p>Nhập PIN để mở ứng dụng</p><small className="pin-wipe-note">Sai 3 lần liên tiếp sẽ xóa dữ liệu A4, chỉ giữ danh sách tên nhóm và hệ số.</small>
+        <h1>ĐẹpGái</h1><p>Nhập PIN để mở ứng dụng</p>
         <label className="pin-label">Mã PIN
-          <input type="text" inputMode="numeric" pattern="[0-9]{4}" maxLength={4} value={pin} onChange={(event) => setPin(event.target.value.replace(/\D/g, '').slice(0, 4))} autoComplete="off" aria-label="PIN mở khóa" enterKeyHint="done" />
+          <input type="text" inputMode="numeric" pattern="[0-9]{4}" maxLength={4} value={pin} disabled={busy} onChange={(event) => { const value = event.target.value.replace(/\D/g, '').slice(0, 4); setPin(value); if (value.length === 4) void unlock(value) }} autoComplete="off" aria-label="PIN mở khóa" enterKeyHint="done" />
         </label>
         {error && <p className="settings-error" role="alert">{error}</p>}
-        <button className="button-primary" type="submit" disabled={busy || pin.length !== 4}>{busy ? 'Đang kiểm tra…' : 'Mở khóa'}</button>
+        {busy && <p role="status">Đang kiểm tra…</p>}
       </form>
     </main>}
   </PreferencesContext.Provider>

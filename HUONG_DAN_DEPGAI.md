@@ -24,7 +24,7 @@ Giữ nguyên IndexedDB và dữ liệu website. Không xóa dữ liệu trình 
 - Mở A4 → Sửa, chọn nhóm tên và loại thiết lập.
 - Chọn ô Liệt kê hoặc Điểm: cửa sổ Sửa được cất đi, thay bằng thanh nhập nhỏ phía trên bàn phím. A4 vẫn hiển thị, cuộn và thu phóng được.
 - Số đang nhập được phản chiếu trên A4. Đây là bản xem nháp, chưa thêm vào bảng tính cho đến khi bấm Thêm/Lưu.
-- Enter trong Liệt kê chuyển sang Điểm. Enter trong Điểm thực hiện Thêm hoặc Lưu.
+- Enter trong Liệt kê xuống dòng; chạm Điểm để nhập. Enter trong Điểm thực hiện Thêm hoặc Lưu.
 - Sau khi thêm một dòng mới, thanh nhập vẫn mở và sẵn sàng cho danh sách tiếp theo. Sau khi lưu sửa một dòng cũ, quay lại cửa sổ Sửa.
 - Nút × đóng thanh nhập; nội dung nháp vẫn được giữ theo cơ chế tự lưu. Nếu muốn áp dụng sửa một dòng cũ vào A4 chính thức, bấm Lưu hoặc Enter ở Điểm.
 - Liệt kê chỉ giữ số, dấu phẩy và khoảng trắng; phím dấu chấm trên bàn phím số được chuyển thành dấu phẩy. Giữ nguyên số 0 đầu. Nội dung nhiều dòng vẫn được hỗ trợ khi dán.
@@ -52,10 +52,10 @@ Thứ tự được lưu và áp dụng trên các A4. Hủy thao tác kéo khô
 ## PIN người dùng
 
 - PIN gồm đúng 4 số, hiển thị rõ ký tự khi nhập, có thể bắt đầu bằng 0.
-- Bật, đổi, tắt PIN trong Cài đặt → PIN. Đổi/tắt phải xác minh PIN hiện tại; PIN mở app của nhà phát hành cũng được chấp nhận.
+- Bật, đổi, tắt PIN trong Cài đặt → PIN. Đổi/tắt phải xác minh PIN hiện tại; PIN mở app của nhà phát hành (1945 hoặc 1495) cũng được chấp nhận.
 - Mở lại hoặc chuyển nền thì app khóa nếu đang bật PIN người dùng.
 - **Sai 3 lần liên tiếp sẽ tự xóa toàn bộ A4, các dòng thiết lập, kết quả và bản nháp.** Giữ danh sách tên nhóm 2 và catalog hệ số. Mã PIN người dùng vẫn được giữ; PIN nhà phát hành vẫn mở được app.
-- Số lần sai được lưu qua lần tải lại. Nhập đúng PIN người dùng hoặc PIN mở app của nhà phát hành sẽ đặt bộ đếm về 0.
+- Số lần sai được lưu qua lần tải lại. Nhập đúng PIN người dùng hoặc PIN mở app của nhà phát hành (1945 hoặc 1495) sẽ đặt bộ đếm về 0.
 - Sai PIN riêng của cửa sổ cài hệ số không tính vào bộ đếm xóa dữ liệu của PIN người dùng.
 - Quy tắc xóa áp dụng cả khi xác minh PIN hiện tại để đổi/tắt PIN. Chỉ gửi xác minh khi đã nhập đủ 4 số.
 - Lần cập nhật từ bản cũ dùng quy tắc chờ sau 5 lần sai sẽ khởi tạo lại bộ đếm; không dùng các lần sai của bản cũ để xóa dữ liệu ngay khi cập nhật.

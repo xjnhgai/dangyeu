@@ -18,15 +18,22 @@ interface A4PageV2Props {
   zoom?: number
   onZoomChange?: (nextZoom: number) => void
   centerInViewport?: boolean
+  fitRequest?: number
 }
 
-export default function A4PageV2({ projection, summary, results, showCalculation = true, zoom = 1, onZoomChange, centerInViewport = false }: A4PageV2Props) {
-  const safeZoom = Math.max(0.25, Math.min(1.75, zoom))
+export default function A4PageV2({ projection, summary, results, showCalculation = true, zoom = 1, onZoomChange, centerInViewport = false, fitRequest = 0 }: A4PageV2Props) {
+  const safeZoom = Math.max(0.03, Math.min(4, zoom))
   const pageRef = useRef<HTMLElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
   const zoomCallbackRef = useRef(onZoomChange)
   const currentZoomRef = useRef(safeZoom)
-  const [pageHeight, setPageHeight] = useState(1122)
+  const [paperSize, setPaperSize] = useState(() => ({ width: Math.min(794, window.innerWidth), minHeight: window.innerHeight - 12 }))
+  const [pageHeight, setPageHeight] = useState(0)
+  const autoFitRef = useRef(false)
+
+  useLayoutEffect(() => {
+    autoFitRef.current = fitRequest > 0
+  }, [fitRequest])
 
   useEffect(() => {
     zoomCallbackRef.current = onZoomChange
@@ -48,6 +55,7 @@ export default function A4PageV2({ projection, summary, results, showCalculation
 
     const handleTouchStart = (event: TouchEvent) => {
       if (event.touches.length === 2) {
+        autoFitRef.current = false
         initialDistance = distance(event.touches)
         initialZoom = currentZoomRef.current
       }
@@ -57,7 +65,7 @@ export default function A4PageV2({ projection, summary, results, showCalculation
       if (event.touches.length === 2 && initialDistance > 0) {
         event.preventDefault()
         const ratio = distance(event.touches) / initialDistance
-        const nextZoom = Math.max(0.35, Math.min(1.75, initialZoom * ratio))
+        const nextZoom = Math.max(0.03, Math.min(4, initialZoom * ratio))
         zoomCallbackRef.current?.(nextZoom)
       }
     }
@@ -81,33 +89,39 @@ export default function A4PageV2({ projection, summary, results, showCalculation
 
   useLayoutEffect(() => {
     const page = pageRef.current
-    if (!page) return
-
-    const updateHeight = () => {
-      setPageHeight(Math.max(1122, page.scrollHeight))
+    const viewport = viewportRef.current
+    if (!page || !viewport) return
+    const update = () => {
+      const width = Math.min(794, viewport.clientWidth || window.innerWidth)
+      setPaperSize((current) => current.width === width ? current : { width, minHeight: window.innerHeight - 12 })
+      const height = Math.max(page.scrollHeight, page.offsetHeight, paperSize.minHeight)
+      setPageHeight(height)
+      if (autoFitRef.current) {
+        const availableHeight = viewport.clientHeight || window.innerHeight
+        zoomCallbackRef.current?.(Math.max(0.03, Math.min(1, width / paperSize.width, availableHeight / height)))
+      }
     }
-
-    updateHeight()
-    if (typeof ResizeObserver === 'undefined') return
-
-    const observer = new ResizeObserver(updateHeight)
-    observer.observe(page)
-    return () => observer.disconnect()
-  }, [projection, summary, showCalculation])
+    update()
+    window.visualViewport?.addEventListener('resize', update)
+    window.addEventListener('resize', update)
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update)
+    observer?.observe(page); observer?.observe(viewport)
+    return () => { observer?.disconnect(); window.removeEventListener('resize', update); window.visualViewport?.removeEventListener('resize', update) }
+  }, [projection, summary, showCalculation, fitRequest, paperSize])
 
   return (
     <div className={`a4-v2-scroll${centerInViewport ? ' is-fit-page' : ''}`} ref={viewportRef}>
       <div
         className="a4-v2-zoom-frame"
         style={{
-          width: `${210 * safeZoom}mm`,
+          width: `${paperSize.width * safeZoom}px`,
           height: `${pageHeight * safeZoom}px`,
         }}
       >
         <article
           ref={pageRef}
           className="a4-v2-page"
-          style={{ transform: `scale(${safeZoom})` }}
+          style={{ width: `${paperSize.width}px`, minHeight: `${paperSize.minHeight}px`, transform: `scale(${safeZoom})` }}
         >
           <header className="a4-v2-header">
             <h1>{projection.group1.dateLabel}</h1>

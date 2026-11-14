@@ -2182,3 +2182,11 @@ button:disabled { cursor: not-allowed; opacity: .55; }
   .publisher-pin-backdrop { bottom: var(--keyboard-inset, 0px); }
   .is-entry-docked .document-stage, .is-entry-docked .document-paper-wrap { height: calc(var(--visible-height, 100dvh) - var(--entry-dock-height, 140px) - 12px); }
 }
+/* The gate now owns visual-viewport tracking before App is mounted. */
+body:has(.pin-screen) { overflow: hidden; }
+.pin-screen { inset: auto 0 auto; top: var(--visual-top, 0px); height: var(--visible-height, 100dvh); min-height: 0; box-sizing: border-box; padding: 12px; overflow: hidden; }
+.pin-card { box-sizing: border-box; max-height: calc(var(--visible-height, 100dvh) - 24px); overflow-y: auto; flex-shrink: 1; gap: 12px; }
+.pin-label input { min-height: 48px; }
+.setting-type-chip { touch-action: none; cursor: grab; user-select: none; }
+.entry-dock { bottom: auto; top: calc(var(--visual-top, 0px) + var(--visible-height, 100dvh) - var(--entry-dock-height, 140px) - 6px); }
+.compact-form textarea { width: 100%; box-sizing: border-box; min-height: 76px; padding: 8px; border: 1px solid #d8e0e8; border-radius: 7px; color: #26374b; background: #fff; font: inherit; font-size: 16px; resize: vertical; }

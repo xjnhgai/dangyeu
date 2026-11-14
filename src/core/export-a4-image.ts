@@ -79,7 +79,7 @@ function drawEntrySlice(
   context.font = '500 44px Arial, Helvetica, sans-serif'
   const listingWidth = Math.max(...(values.length ? values : ['—']).map((value) => context.measureText(value).width))
   const characterGap = context.measureText('0').width
-  const dividerX = x + listingWidth + characterGap * 0.15
+  const dividerX = x + listingWidth + context.measureText(' ').width
 
   for (let index = startIndex; index < endIndex; index += 1) {
     const value = values[index]
@@ -128,7 +128,7 @@ function drawSectionTotals(
     context.textAlign = 'left'
     context.font = '400 44px Arial, Helvetica, sans-serif'
     context.fillStyle = '#1769aa'
-    const valueX = x + context.measureText('000000').width
+    const valueX = x + context.measureText('000000').width - context.measureText(' ').width
     context.fillText('Điểm:', x, y)
     context.fillText(amount(pointTotal), valueX, y)
     context.fillText('Đánh:', x, y + 53)

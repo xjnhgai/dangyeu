@@ -3,6 +3,7 @@ import { useRegisterSW } from 'virtual:pwa-register/react'
 
 import A4PageV2 from './components/A4PageV2'
 import ListingInput from './components/ListingInput'
+import { cleanListingInput } from './core/input-text'
 import EntryDock from './components/EntryDock'
 import PublisherPrompt from './components/PublisherPrompt'
 import { buildEntryPreview, type EntryTarget } from './core/entry-preview'
@@ -11,7 +12,6 @@ import { PinSettings, RetentionSettings } from './components/PrivacySettings'
 import { applyRetention } from './core/app-preferences'
 import { useAppPreferences } from './core/preferences-context'
 import { moveGroup2Name, orderGroups2 } from './core/group2-order'
-import { useEditorViewport } from './core/use-editor-viewport'
 import {
   addGroup1V2,
   addGroup2V2,
@@ -141,15 +141,18 @@ type SettingTypePickerProps = {
   groups3: readonly Group3[]
   activeTypeId: EntityId | null
   onSelect: (typeId: EntityId) => void
+  onReorder: (source: string, target: string) => void
   onEdit: () => void
 }
 
 /** One-line formula picker. Configured types are fitted first; overflow lives under +. */
-function SettingTypePicker({ types, groups3, activeTypeId, onSelect, onEdit }: SettingTypePickerProps) {
+function SettingTypePicker({ types, groups3, activeTypeId, onSelect, onReorder, onEdit }: SettingTypePickerProps) {
   const visibleRowRef = useRef<HTMLDivElement>(null)
   const measureRowRef = useRef<HTMLDivElement>(null)
   const [visibleIds, setVisibleIds] = useState<string[]>([])
   const [overflowOpen, setOverflowOpen] = useState(false)
+  const drag = useRef<{ source: string; target: string; x: number; y: number; moving: boolean } | null>(null)
+  const suppress = useRef(false)
   const configuredIds = useMemo(() => new Set(groups3.map((item) => item.settingTypeId)), [groups3])
   const priorityTypes = useMemo(() => [
     ...types.filter((type) => type.id === activeTypeId),
@@ -218,7 +221,12 @@ function SettingTypePicker({ types, groups3, activeTypeId, onSelect, onEdit }: S
         className={`choice-chip setting-type-chip${stateClass}`}
         key={type.id}
         data-measure-type-id={measuring ? type.id : undefined}
-        onClick={measuring ? undefined : () => { onSelect(type.id); setOverflowOpen(false) }}
+        data-drag-type={measuring ? undefined : type.id}
+        onPointerDown={measuring ? undefined : (event) => { if (event.button !== 0) return; suppress.current = false; drag.current = { source: type.id, target: type.id, x: event.clientX, y: event.clientY, moving: false }; event.currentTarget.setPointerCapture(event.pointerId) }}
+        onPointerMove={measuring ? undefined : (event) => { const current = drag.current; if (!current) return; if (Math.hypot(event.clientX - current.x, event.clientY - current.y) < 7 && !current.moving) return; current.moving = true; event.preventDefault(); const id = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-drag-type]')?.dataset.dragType; if (id) current.target = id; if (document.elementFromPoint(event.clientX, event.clientY)?.closest('.type-overflow-trigger')) setOverflowOpen(true) }}
+        onPointerUp={measuring ? undefined : () => { const current = drag.current; drag.current = null; if (current?.moving) { suppress.current = true; onReorder(current.source, current.target) } }}
+        onPointerCancel={() => { drag.current = null }}
+        onClick={measuring ? undefined : () => { if (suppress.current) { suppress.current = false; return }; onSelect(type.id); setOverflowOpen(false) }}
         aria-pressed={selected}
         tabIndex={measuring ? -1 : undefined}
       >{type.name}</button>
@@ -535,7 +543,6 @@ function ToolbarIcon({ name }: { name: 'eye' | 'edit' | 'chart' | 'download' }) 
 
 function App() {
   const { preferences } = useAppPreferences()
-  useEditorViewport()
   const [retentionBusy, setRetentionBusy] = useState(false)
   const retentionRunningRef = useRef(false)
   const retentionPreferencesRef = useRef(preferences)
@@ -570,11 +577,8 @@ function App() {
   const draftListingInputRef = useRef<HTMLTextAreaElement | null>(null)
   const [draftListingFocusToken, setDraftListingFocusToken] = useState(0)
   const [pageFitMode, setPageFitMode] = useState<'width' | 'page'>('width')
-  const [zoom, setZoom] = useState(() => {
-    if (typeof window === 'undefined') return 0.9
-    const availableWidth = window.innerWidth <= 760 ? window.innerWidth : window.innerWidth - 30
-    return Math.min(1, Math.max(0.35, availableWidth / 794))
-  })
+  const [zoom, setZoom] = useState(1)
+  const [paperFitRequest, setPaperFitRequest] = useState(0)
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [greeting, setGreeting] = useState('Hello')
@@ -737,18 +741,6 @@ function App() {
     return () => { cancelled = true }
   }, [])
 
-  useEffect(() => {
-    const updateFitAfterResize = () => {
-      const mobile = window.matchMedia('(max-width: 760px)').matches
-      const availableWidth = Math.max(320, window.innerWidth - (mobile ? 0 : 30))
-      const widthZoom = Math.min(1, availableWidth / 794)
-      const availableHeight = Math.max(320, window.innerHeight - (mobile ? 12 : 190))
-      const nextZoom = pageFitMode === 'page' ? Math.min(widthZoom, availableHeight / 1122) : widthZoom
-      setZoom(Math.max(0.35, nextZoom))
-    }
-    window.addEventListener('resize', updateFitAfterResize)
-    return () => window.removeEventListener('resize', updateFitAfterResize)
-  }, [pageFitMode])
   const draggedTypeIdRef = useRef<EntityId | null>(null)
   const typeDropTargetRef = useRef<EntityId | null>(null)
 
@@ -1037,25 +1029,12 @@ function App() {
   }
 
   function applyPageFit(mode: 'width' | 'page') {
-    setPageFitMode(mode)
-    if (typeof window === 'undefined') return
-    const mobile = window.matchMedia('(max-width: 760px)').matches
-    const availableWidth = Math.max(320, window.innerWidth - (mobile ? 0 : 30))
-    const widthZoom = Math.min(1, availableWidth / 794)
-    const availableHeight = Math.max(320, window.innerHeight - (mobile ? 12 : 190))
-    const nextZoom = mode === 'page'
-      ? Math.min(widthZoom, availableHeight / 1122)
-      : widthZoom
-    setZoom(Math.max(0.35, nextZoom))
+    setPageFitMode('width')
+    setZoom(1)
+    if (mode === 'page') setPaperFitRequest((value) => value + 1)
   }
 
-  function resetPageToWidthFit() {
-    applyPageFit('width')
-  }
-
-  function toggleMobilePageFit() {
-    applyPageFit(pageFitMode === 'width' ? 'page' : 'width')
-  }
+  function resetPageToWidthFit() { applyPageFit('width') }
 
   function deleteA4Record(group1: Group1) {
     if (!window.confirm(`Xóa toàn bộ dữ liệu A4 ngày ${group1.dateLabel}? Thao tác này không thể hoàn tác.`)) return
@@ -1401,6 +1380,7 @@ function App() {
     const draftKey = `${selectedGroup2.id}:${typeId}`
     const row = (draftRowsByType[draftKey] ?? []).find((item) => item.id === rowId)
     if (!row) return
+    try { parseSettingNumberListV2(row.listing, type.formulaId); parsePointTextV2(row.point) } catch (error) { setErrorMessage(error instanceof Error ? error.message : 'Dữ liệu chưa hợp lệ.'); return }
     if (!isDraftComplete(row, type)) {
       setErrorMessage(type.formulaId === 'xa' || type.formulaId === 'xb'
         ? 'XA/XB cần 2–5 số, Điểm và đủ hệ số theo số lượng số trong danh sách.'
@@ -1840,6 +1820,7 @@ function App() {
   function openEntryDock(mode: 'saved' | 'draft', rowId: string, typeId: string, field: 'listing' | 'point' = 'listing') {
     if (!selectedGroup1 || !selectedGroup2) return
     clearFeedback()
+    if (field === 'listing') setPaperFitRequest((value) => value + 1)
     setEntryDock({ mode, rowId, typeId, group1Id: selectedGroup1.id, group2Id: selectedGroup2.id, field })
   }
 
@@ -1869,7 +1850,7 @@ function App() {
   }
 
   return (
-    <main className={`${screen === 'page' ? 'app-shell app-shell-page' : 'app-shell'}${entryDock ? ' is-entry-docked' : ''}`}>
+    <main onFocusCapture={(event) => { const input = event.target; if (input instanceof HTMLTextAreaElement || (input instanceof HTMLInputElement && ['text', 'password'].includes(input.type))) requestAnimationFrame(() => { if (document.activeElement === input) input.setSelectionRange(input.value.length, input.value.length) }) }} className={`${screen === 'page' ? 'app-shell app-shell-page' : 'app-shell'}${entryDock ? ' is-entry-docked' : ''}`}>
       {publisherPromptOpen && <PublisherPrompt onClose={() => setPublisherPromptOpen(false)} onUnlock={() => { setPublisherPromptOpen(false); setPublisherAuthorized(true); setTypeSettingsOpen(true) }} />}
       {screen === 'page' && (
         <>
@@ -1880,21 +1861,7 @@ function App() {
             <button className="mobile-page-control mobile-back-control" type="button" onClick={handlePageBack} aria-label="Quay lại">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m0 0 6-6m-6 6 6 6" /></svg>
             </button>
-            <button
-              className={`mobile-page-control mobile-fit-control${pageFitMode === 'page' ? ' is-active' : ''}`}
-              type="button"
-              onClick={toggleMobilePageFit}
-              aria-label={pageFitMode === 'width' ? 'Hiển thị vừa trang A4' : 'Hiển thị vừa chiều ngang'}
-              title={pageFitMode === 'width' ? 'Vừa trang A4' : 'Vừa chiều ngang'}
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                {pageFitMode === 'width' ? (
-                  <path d="M3 9V3h6M15 3h6v6M21 15v6h-6M9 21H3v-6" />
-                ) : (
-                  <path d="M9 3v6H3M15 3v6h6M21 15h-6v6M9 21v-6H3" />
-                )}
-              </svg>
-            </button>
+
           </nav>
         </>
       )}
@@ -2071,6 +2038,7 @@ function App() {
               {projectionState.projection ? (
                 <A4PageV2
                   projection={projectionState.projection}
+                  fitRequest={paperFitRequest}
                   centerInViewport={pageFitMode === 'page'}
                   summary={entryDock ? undefined : calculationState.workspace?.summary}
                   results={entryDock ? EMPTY_RESULTS : calculationState.workspace?.settingResults ?? EMPTY_RESULTS}
@@ -2130,6 +2098,7 @@ function App() {
                           groups3={selectedGroup2.groups3}
                           activeTypeId={activeSettingTypeId}
                           onSelect={selectSettingType}
+                          onReorder={(source, target) => { const index = data.settingTypes.findIndex((type) => type.id === target); if (index >= 0) setData((current) => reorderSettingType(current, source, index)) }}
                           onEdit={openTypesManagement}
                         />
                       </div>
@@ -2181,7 +2150,7 @@ function App() {
 
               {activePanel === 'results' && (
                 <div className="sheet-content compact-form">
-                  <label>1–7<input value={drawOneToSeven} onChange={(event) => setDrawOneToSeven(event.target.value)} onBlur={persistOneToSevenDraft} aria-invalid={!drawOneToSevenValid} /></label>
+                  <label>1–7<textarea rows={3} inputMode="decimal" value={drawOneToSeven} onChange={(event) => setDrawOneToSeven(cleanListingInput(event.target.value))} onBlur={persistOneToSevenDraft} aria-invalid={!drawOneToSevenValid} /></label>
                   <div className={`draw-count-status${drawOneToSevenValid ? '' : ' is-invalid'}`}>
                     <span>{drawOneToSevenCount}/26 số</span>
                     <strong>{!drawOneToSeven.trim() ? 'Chưa nhập' : drawOneToSevenValid ? 'Hợp lệ' : 'Không hợp lệ'}</strong>
@@ -2377,7 +2346,7 @@ function App() {
       )}
 
       {entryDock && entryDockRow && entryDockType && screen === 'page' && <EntryDock
-        rowId={entryDock.rowId} initialField={entryDock.field}
+        onListingTap={() => setPaperFitRequest((value) => value + 1)} formulaId={entryDockType.formulaId} rowId={entryDock.rowId} initialField={entryDock.field}
         title={`${entryDockGroup?.name ?? ''} · ${entryDockType.name}`}
         listing={entryDockRow.listing} point={entryDockRow.point} saved={entryDock.mode === 'saved'}
         onListing={(value) => updateEntryDock('listing', value)} onPoint={(value) => updateEntryDock('point', value)}

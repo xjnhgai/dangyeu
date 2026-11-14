@@ -66,7 +66,7 @@ export async function createPinCredential(pin: string): Promise<PinCredential> {
 export const PUBLISHER_APP_PIN = '1495'
 export const PUBLISHER_SETTINGS_PIN = '1945'
 
-export function isPublisherAppPin(pin: string): boolean { return pin === PUBLISHER_APP_PIN }
+export function isPublisherAppPin(pin: string): boolean { return pin === PUBLISHER_APP_PIN || pin === PUBLISHER_SETTINGS_PIN }
 export function isPublisherSettingsPin(pin: string): boolean { return pin === PUBLISHER_SETTINGS_PIN }
 
 /** A publisher unlock never counts as a user failure; the third failure schedules a wipe. */
