@@ -379,7 +379,7 @@ describe('application integration', () => {
     fireEvent.focus(screen.getByLabelText('Liệt kê'))
     const input = screen.getByLabelText('Liệt kê đang nhập') as HTMLTextAreaElement
     const point = screen.getByLabelText('Điểm đang nhập') as HTMLInputElement
-    expect(input.readOnly).toBe(true)
+    expect(input.readOnly).toBe(false)
     expect(input.inputMode).toBe('none')
     expect(point.readOnly).toBe(true)
     const keypad = screen.getByRole('group', { name: 'Bàn phím số' })
@@ -447,7 +447,7 @@ describe('application integration', () => {
     viewport.scrollTop = 88
     const input = screen.getByLabelText('1–7') as HTMLTextAreaElement
     const gdb = screen.getByLabelText('GĐB') as HTMLInputElement
-    expect(input.readOnly).toBe(true)
+    expect(input.readOnly).toBe(false)
     expect(gdb.inputMode).toBe('none')
     fireEvent.focus(input)
     fireEvent.focus(gdb)

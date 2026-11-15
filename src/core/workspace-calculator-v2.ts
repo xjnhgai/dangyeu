@@ -1,3 +1,4 @@
+import { resultNumbers } from './result-input'
 import {
   calculateSetting,
   type SettingCalculationResult,
@@ -68,7 +69,8 @@ export function parseListingTextV2(text: string): string[] {
 
 /** UI validation for the 1–7 draw: either not entered yet or exactly 26 values. */
 export function parseOneToSevenTextV2(text: string): string[] {
-  const values = parseListingTextV2(text)
+  const values = resultNumbers(text)
+  if (values.some((value) => !VALID_LISTING_NUMBER.test(value))) throw new WorkspaceCalculationV2Error('INVALID_DRAW_DATA', 'Nhập sai số')
   if (values.length > 0 && values.length !== 26) {
     throw new WorkspaceCalculationV2Error(
       'INVALID_DRAW_DATA',

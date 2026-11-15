@@ -1,3 +1,4 @@
+import { resultNumbers } from './core/result-input'
 import { useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 
@@ -40,7 +41,6 @@ import {
   parseOneToSevenTextV2,
   parsePointTextV2,
   parseSettingNumberListV2,
-  splitSeparatedValuesV2,
   getCoefficientProfileKey,
   getCoefficientProfileKeys,
   isProfileCoefficientFormula,
@@ -172,7 +172,7 @@ function dateSortValue(label: string): number {
 }
 
 function countDelimitedValues(text: string): number {
-  return splitSeparatedValuesV2(text).length
+  try { return resultNumbers(text).length } catch { return 0 }
 }
 
 function getOneToSevenDraftError(text: string): string {

@@ -269,3 +269,11 @@ html:has(.app-shell-page), body:has(.app-shell-page) { overscroll-behavior: none
 .inline-type-coefficients label { display: flex; flex-direction: column; gap: 6px; color: #9d7890; font-size: 11px; }
 .inline-type-coefficients input { width: 100%; min-width: 0; min-height: 40px; padding: 9px; border: 1px solid #e8d8e2; border-radius: 11px; background: #fff; font-size: 16px; color: #79536e; }
 .inline-type-coefficients .type-reset-name-button { width: 100%; min-height: 38px; background: #f1e4ed; color: #a0718c; border-radius: 10px; }
+
+/* Text grows with its contents; the enclosing sheet scrolls for very long lists. */
+.entry-dock-fields textarea, .results-fields textarea {
+  max-height: none; overflow: hidden; resize: none; caret-color: #a4537c;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.entry-dock { max-height: calc(100dvh - 16px); overflow-y: auto; }
+.entry-keypad { flex-shrink: 0; }

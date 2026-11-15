@@ -1,3 +1,4 @@
+import { useAutoHeight } from '../core/use-auto-height'
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
 import type { FormulaId } from '../core/models-v2'
 import { cleanListingInput } from '../core/input-text'
@@ -18,7 +19,10 @@ export default function EntryDock({ rowId, title, listing, point, saved, onListi
   const [field, setField] = useState<'listing' | 'point'>(initialField)
   const listingRef = useRef<HTMLTextAreaElement>(null)
   const pointRef = useRef<HTMLInputElement>(null)
+  const pending = useRef<{ target: string; value: string; position: number } | null>(null)
   const dockRef = useRef<HTMLElement>(null)
+
+  useAutoHeight(listingRef, listing)
 
   useLayoutEffect(() => {
     const input = initialField === 'point' ? pointRef.current : listingRef.current
@@ -37,22 +41,28 @@ export default function EntryDock({ rowId, title, listing, point, saved, onListi
   }, [])
 
 
-  function changeListing(raw: string) {
+  function changeListing(raw: string, validateCompleted = false) {
     const next = cleanListingInput(raw)
     const values = next.trim().split(/[\s,]+/).filter(Boolean)
     const width = formulaId === 'da' || formulaId === 'db' ? 3 : 2
     const completed = /[\s,]$/.test(next) ? values : values.slice(0, -1)
-    if (values.some((value) => value.length > width) || completed.some((value) => value.length < 2)) { window.alert('Nhập sai số'); return }
+    if (values.some((value) => value.length > width) || (validateCompleted && completed.some((value) => value.length < 2))) { window.alert('Nhập sai số'); return false }
     onListing(next)
+    return true
   }
   function pressKey(key: string, target = field) {
-    if (target === 'listing') {
-      if (key === 'Backspace') onListing(listing.slice(0, -1))
-      else if (/^[0-9,\n ]$/.test(key)) changeListing(listing + key)
-    } else {
-      if (key === 'Backspace') onPoint(point.slice(0, -1))
-      else if (/^\d$/.test(key) && point.length < 4) onPoint(point + key)
-    }
+    const input = target === 'listing' ? listingRef.current : pointRef.current
+    const value = target === 'listing' ? listing : point
+    const waiting = pending.current?.target === target && pending.current.value === value ? pending.current : null
+    const start = waiting?.position ?? input?.selectionStart ?? value.length
+    const end = waiting?.position ?? input?.selectionEnd ?? value.length
+    const from = key === 'Backspace' && start === end ? Math.max(0, start - 1) : start
+    const next = value.slice(0, from) + (key === 'Backspace' ? '' : key) + value.slice(end)
+    if (target === 'listing') { if (!changeListing(next, key !== 'Backspace' && /[\s,]/.test(key))) return }
+    else { if (!/^\d{0,4}$/.test(next)) return; onPoint(next) }
+    const position = from + (key === 'Backspace' ? 0 : key.length)
+    pending.current = { target, value: next, position }
+    requestAnimationFrame(() => { if (pending.current?.target === target && pending.current.value === next) { input?.setSelectionRange(position, position); pending.current = null } })
   }
   function physicalKey(event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) {
     if (event.ctrlKey || event.metaKey || event.altKey) return
@@ -69,9 +79,9 @@ export default function EntryDock({ rowId, title, listing, point, saved, onListi
   return <section ref={dockRef} className="entry-dock" aria-label="Nhập trực tiếp trên A4">
     <div className="entry-dock-heading"><strong>{title}</strong><button type="button" onClick={onClose} aria-label="Đóng thanh nhập">×</button></div>
     <div className="entry-dock-fields">
-      <label>Liệt kê<textarea ref={listingRef} rows={2} value={listing} readOnly inputMode="none" autoComplete="off" autoCorrect="off" spellCheck={false}
+      <label>Liệt kê<textarea ref={listingRef} rows={2} value={listing} inputMode="none" autoComplete="off" autoCorrect="off" spellCheck={false}
         onFocus={(event) => { setField('listing'); const input = event.currentTarget; input.setSelectionRange(input.value.length, input.value.length) }}
-        onKeyDown={physicalKey} onPaste={(event) => { event.preventDefault(); changeListing(listing + event.clipboardData.getData('text')) }}
+        onKeyDown={physicalKey} onPaste={(event) => { event.preventDefault(); pressKey(cleanListingInput(event.clipboardData.getData('text')), 'listing') }}
         onChange={(event) => changeListing(event.target.value)} aria-label="Liệt kê đang nhập" /></label>
       <label>Điểm<input ref={pointRef} type="text" readOnly inputMode="none" maxLength={4} value={point}
         onFocus={(event) => { setField('point'); const input = event.currentTarget; input.setSelectionRange(input.value.length, input.value.length) }}
