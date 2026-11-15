@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 
 const paths: Record<string, ReactNode> = {
+  clipboard: <><path d="M9 5H6a2 2 0 0 0-2 2v13h16V7a2 2 0 0 0-2-2h-3"/><rect x="9" y="2" width="6" height="6" rx="2"/><path d="M8 12h8m-8 4h6"/></>,
   trash: <><path d="M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7"/></>,
   list: <><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M8 8h8M8 12h8M8 16h5"/></>,
   check: <path d="m5 12 4 4L19 6"/>,

@@ -251,3 +251,21 @@ html:has(.app-shell-page), body:has(.app-shell-page) { overscroll-behavior: none
 .management-types .type-catalog-list { padding-bottom: 4px; }
 .pin-settings-detail .management-hint { align-self: flex-start; padding: 6px 11px; border-radius: 10px; background: #f7edf3; color: #9a718b; font-size: 11px; }
 .pin-settings-detail .privacy-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(85px, 1fr)); gap: 8px; }
+.result-label-row { justify-content: flex-end; gap: 6px; }
+.result-label-row label { margin-right: auto; }
+.result-label-row button { display: grid; place-items: center; width: 30px; height: 28px; padding: 6px; }
+.result-label-row button svg { width: 16px; height: 16px; }
+.greeting-image-picker { display: grid; gap: 12px; }
+.greeting-image-picker > strong { color: #8c7487; font-size: 12px; font-weight: 500; }
+.greeting-image-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.greeting-image-options button { display: grid; place-items: center; aspect-ratio: 1; padding: 5px; border: 1px solid #eedfe8; border-radius: 14px; background: #fff9fc; }
+.greeting-image-options img { width: 100%; max-width: 64px; height: auto; border-radius: 12px; }
+.greeting-text .greeting-sticker { display: inline-block; width: .76em; height: .76em; font-size: 1em; vertical-align: -.05em; }
+.greeting-sticker img { display: block; width: 100%; height: 100%; object-fit: contain; border-radius: 20%; }
+.management-types .type-editor { position: relative; }
+.management-types .type-name-row { display: block; }
+.inline-type-coefficients { display: flex; flex-direction: column; gap: 12px; padding-top: 14px; }
+.inline-type-coefficients .coefficient-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.inline-type-coefficients label { display: flex; flex-direction: column; gap: 6px; color: #9d7890; font-size: 11px; }
+.inline-type-coefficients input { width: 100%; min-width: 0; min-height: 40px; padding: 9px; border: 1px solid #e8d8e2; border-radius: 11px; background: #fff; font-size: 16px; color: #79536e; }
+.inline-type-coefficients .type-reset-name-button { width: 100%; min-height: 38px; background: #f1e4ed; color: #a0718c; border-radius: 10px; }

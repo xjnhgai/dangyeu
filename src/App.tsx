@@ -3,7 +3,7 @@ import { useRegisterSW } from 'virtual:pwa-register/react'
 
 import DrawerPicker from './components/DrawerPicker'
 import ResultsEditor from './components/ResultsEditor'
-import { loveIcon, LOVE_ICON_EMOJIS } from './core/love-icons'
+import { loveIcon, ICON_EMOJIS } from './core/love-icons'
 import GreetingText from './components/GreetingText'
 import AppIcon from './components/AppIcon'
 import { clampPaperZoom } from './core/paper-zoom'
@@ -101,14 +101,6 @@ function createCountCoefficientDraft(type: SettingTypeDefinition): CountCoeffici
   })) as CountCoefficientDraft
 }
 
-const GREETING_ICON_OPTIONS = [
-  '✨', '🌸', '🌷', '🌼', '🪷', '🦋', '🎀', '💖', '💕', '💗',
-  '⭐', '🌙', '☁️', '🌈', '🍀', '🍓', '🐰', '🐻', '🐱', '🐣',
-  '🧸', '🩷', '💫', '🕊️', '🐶', '🐹', '🐼', '🦊', '🐸', '🐥', '🦄', '🐬',
-  '🍒', '🍑', '🍉', '🍋', '🧁', '🍰', '🍩', '🍭', '🫧', '🌻', '🌺', '💐',
-  '🪻', '🍄', '🐝', '🐞', '🌟', '☀️', '🪄', '🎈', '🎁', '💎', '🧿', '🪩',
-] as const
-
 const TOOLS: { key: ToolKey | 'save'; label: string; icon: 'eye' | 'edit' | 'chart' | 'download' }[] = [
   { key: 'view', label: 'Xem', icon: 'eye' },
   { key: 'edit', label: 'Sửa', icon: 'edit' },
@@ -153,7 +145,7 @@ function SettingTypePicker({ types, groups3, activeTypeId, onSelect, onReorder, 
   onSelect: (id: string) => void; onReorder: (source: string, target: string) => void; onEdit: () => void
   hidden: string[]; onHidden: (ids: string[]) => void
 }) {
-  return <DrawerPicker kind="type" items={types.map((type) => ({ id: type.id, label: type.name, configured: groups3.some((row) => row.settingTypeId === type.id) }))} selected={activeTypeId ?? ''} hidden={hidden} onHidden={onHidden} onSelect={onSelect} onReorder={onReorder} listLabel="Danh sách nhóm thiết lập khác" actions={<><span className="drawer-action-spacer" /><button className="icon-button chip-edit-button" type="button" onClick={onEdit} aria-label="Sửa thiết lập"><AppIcon name="settings" /></button></>} />
+  return <DrawerPicker kind="type" items={types.map((type) => ({ id: type.id, label: type.name, configured: groups3.some((row) => row.settingTypeId === type.id) }))} selected={activeTypeId ?? ''} hidden={hidden} onHidden={onHidden} onSelect={onSelect} onReorder={onReorder} listLabel="Danh sách nhóm thiết lập khác" actions={<><span className="drawer-action-spacer" /><button className="icon-button chip-edit-button" type="button" onClick={onEdit} aria-label="Cài đặt nhóm thiết lập"><AppIcon name="settings" /></button></>} />
 }
 
 function Group2NamePicker({ names, configuredNameKeys, activeNameKey, onSelect, onReorder, onAdd, onEdit, hidden, onHidden }: {
@@ -286,7 +278,7 @@ function App() {
   const [paperFitRequest, setPaperFitRequest] = useState(0)
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
-  const [animatedGreetingIcons, setAnimatedGreetingIcons] = useState<string[]>([])
+  const [greetingImageIcons, setGreetingImageIcons] = useState<string[]>([])
   const [hiddenGroup2Names, setHiddenGroup2Names] = useState<string[]>([])
   const [hiddenSettingTypeIds, setHiddenSettingTypeIds] = useState<string[]>([])
   const [greeting, setGreeting] = useState('Hello')
@@ -316,7 +308,6 @@ function App() {
     '4': { coefficientD: '', coefficientT: '' },
     '5': { coefficientD: '', coefficientT: '' },
   })
-  const [typeSettingsOpen, setTypeSettingsOpen] = useState(false)
   const [publisherPromptOpen, setPublisherPromptOpen] = useState(false)
   const [publisherAuthorized, setPublisherAuthorized] = useState(false)
   const [entryDock, setEntryDock] = useState<EntryTarget | null>(null)
@@ -326,7 +317,7 @@ function App() {
   const [draggingTypeId, setDraggingTypeId] = useState<EntityId | null>(null)
   const [typeDropTargetId, setTypeDropTargetId] = useState<EntityId | null>(null)
   useEffect(() => {
-    const closePrivatePanels = () => { setPublisherAuthorized(false); setTypeSettingsOpen(false); setPublisherPromptOpen(false); setEntryDock(null) }
+    const closePrivatePanels = () => { setPublisherAuthorized(false); setPublisherPromptOpen(false); setEntryDock(null) }
     const onHidden = () => { if (document.visibilityState === 'hidden') closePrivatePanels() }
     document.addEventListener('visibilitychange', onHidden)
     window.addEventListener('pagehide', closePrivatePanels)
@@ -430,7 +421,7 @@ function App() {
           setHiddenGroup2Names(Array.isArray(loadedQuickSettings.hiddenGroup2Names) ? loadedQuickSettings.hiddenGroup2Names.filter((id) => typeof id === 'string') : [])
           setHiddenSettingTypeIds(Array.isArray(loadedQuickSettings.hiddenSettingTypeIds) ? loadedQuickSettings.hiddenSettingTypeIds.filter((id) => typeof id === 'string') : [])
           const migratedGreeting = normalizeGreetingSettings(loadedQuickSettings.greeting)
-          setAnimatedGreetingIcons(migratedGreeting.animatedIcons ?? [])
+          setGreetingImageIcons(migratedGreeting.illustratedIcons ?? migratedGreeting.animatedIcons ?? [])
           setGreeting(migratedGreeting.text)
           setGreetingFontSize(migratedGreeting.fontSize)
           setGreetingFontFamily(migratedGreeting.fontFamily)
@@ -524,7 +515,7 @@ function App() {
     // When the user has opened the result editor for this A4, never calculate
     // from stale persisted results while the current input draft is invalid.
     if (drawDraftGroup1Id === a4Selection.group1Id && drawDraftError) {
-      return { workspace: null, error: drawDraftError }
+      return { workspace: null, error: '' }
     }
     try {
       return { workspace: calculateWorkspaceForA4V2(data, a4Selection), error: '' }
@@ -561,8 +552,8 @@ function App() {
   const quickSettingsSnapshot = useMemo(() => ({ ...createQuickSettingsSnapshot(
     data,
     quickGroup2Suggestions,
-    { text: greeting, fontSize: greetingFontSize, fontFamily: greetingFontFamily, color: greetingColor, icons: [], animatedIcons: animatedGreetingIcons },
-  ), hiddenGroup2Names, hiddenSettingTypeIds }), [data, quickGroup2Suggestions, greeting, greetingFontSize, greetingFontFamily, greetingColor, animatedGreetingIcons, hiddenGroup2Names, hiddenSettingTypeIds])
+    { text: greeting, fontSize: greetingFontSize, fontFamily: greetingFontFamily, color: greetingColor, icons: [], illustratedIcons: greetingImageIcons },
+  ), hiddenGroup2Names, hiddenSettingTypeIds }), [data, quickGroup2Suggestions, greeting, greetingFontSize, greetingFontFamily, greetingColor, greetingImageIcons, hiddenGroup2Names, hiddenSettingTypeIds])
 
   const currentWorkspaceSnapshot = useMemo<CalculationWorkspaceV2>(() => ({
     schemaVersion: 2,
@@ -1230,8 +1221,8 @@ function App() {
       })
       setErrorMessage('')
       return true
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Dữ liệu 1–7 không hợp lệ.')
+    } catch {
+      setErrorMessage('')
       return false
     }
   }
@@ -1256,6 +1247,17 @@ function App() {
     return true
   }
 
+  function clearDrawField(field: 'list' | 'gdb') {
+    if (!selectedGroup1) return
+    if (field === 'list') setDrawOneToSeven(''); else setDrawGdb('')
+    setErrorMessage('')
+    setData((current) => {
+      const page = current.groups1.find((item) => item.id === selectedGroup1.id)
+      if (!page) return current
+      return updateGroup1DrawDataV2(current, page.id, { oneToSeven: field === 'list' ? [] : page.drawData.oneToSeven, gdb: field === 'gdb' ? '' : page.drawData.gdb })
+    })
+  }
+
   function persistDrawDataDraft(): boolean {
     if (!selectedGroup1) return true
     try {
@@ -1268,7 +1270,7 @@ function App() {
       setErrorMessage('')
       return true
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Dữ liệu kết quả không hợp lệ.')
+      setErrorMessage(isOneToSevenDraftValid(drawOneToSeven) ? (error instanceof Error ? error.message : 'Dữ liệu kết quả không hợp lệ.') : '')
       // Do not commit malformed values, but let the user leave the panel.
       // calculationState keeps results suppressed for this A4 until corrected.
       return true
@@ -1283,8 +1285,6 @@ function App() {
   }
 
   function openTypesManagement() {
-    setTypeSettingsOpen(false)
-    setPublisherAuthorized(false)
     setPublisherPromptOpen(false)
     const first = data.settingTypes[0]
     if (first) {
@@ -1448,6 +1448,8 @@ function App() {
       setEditingTypeT(type.defaultCoefficientT ?? '')
       setEditingTypeCoefficientsByCount(createCountCoefficientDraft(type))
     }
+    const content = typeNameInputRef.current?.closest<HTMLElement>('.sheet-content')
+    if (content) content.scrollTop = 0
     typeNameInputRef.current?.focus({ preventScroll: true })
     requestAnimationFrame(() => { const input = typeNameInputRef.current; if (input) input.setSelectionRange(input.value.length, input.value.length) })
   }
@@ -1459,16 +1461,9 @@ function App() {
     }))
   }
 
-  function closeTypeSettings() {
-    if (!persistEditingType()) return
-    setTypeSettingsOpen(false)
-    setPublisherAuthorized(false)
-  }
-
   function closeManagementPanel() {
     if (managementPanel === 'types' && !persistEditingType()) return
     if (managementPanel === 'date' && !persistDateDraft()) return
-    setTypeSettingsOpen(false)
     setPublisherAuthorized(false)
     setPublisherPromptOpen(false)
     setManagementPanel(null)
@@ -1567,7 +1562,7 @@ function App() {
 
   return (
     <main onFocusCapture={(event) => { const input = event.target; if (input instanceof HTMLTextAreaElement || (input instanceof HTMLInputElement && ['text', 'password'].includes(input.type))) requestAnimationFrame(() => { if (document.activeElement === input) input.setSelectionRange(input.value.length, input.value.length) }) }} className={`${screen === 'page' ? 'app-shell app-shell-page' : 'app-shell'}${entryDock ? ' is-entry-docked' : ''}`}>
-      {publisherPromptOpen && <PublisherPrompt onClose={() => setPublisherPromptOpen(false)} onUnlock={() => { setPublisherPromptOpen(false); setPublisherAuthorized(true); setTypeSettingsOpen(true) }} />}
+      {publisherPromptOpen && <PublisherPrompt onClose={() => setPublisherPromptOpen(false)} onUnlock={() => { setPublisherPromptOpen(false); setPublisherAuthorized(true); openTypesManagement() }} />}
       {screen === 'page' && (
         <>
           <header className="app-header page-desktop-header">
@@ -1592,7 +1587,7 @@ function App() {
               <AppIcon name="settings" />
             </button>
             <div className="home-greeting" style={{ fontSize: `${greetingFontSize}px`, fontFamily: greetingFontFamily, color: greetingColor, fontWeight: greetingFontFamily.startsWith("'DG ") ? 400 : undefined }}>
-              <GreetingText text={greeting} animatedIcons={animatedGreetingIcons} />
+              <GreetingText text={greeting} illustratedIcons={greetingImageIcons} />
             </div>
           </div>
           {storageError && <div className="storage-global-error" role="status">{storageError}</div>}
@@ -1637,7 +1632,7 @@ function App() {
 
                 {homeSettingsSection === 'greeting' && (
                   <div className="sheet-content compact-form home-settings-detail greeting-settings-detail">
-                    <div className="greeting-preview-card"><span className="preview-caption"><AppIcon name="sparkles" /> Xem trước</span><div className="greeting-preview" style={{ fontSize: `${greetingFontSize}px`, fontFamily: greetingFontFamily, color: greetingColor, fontWeight: greetingFontFamily.startsWith("'DG ") ? 400 : undefined }}><GreetingText text={greeting || 'Lời chào của bạn'} animatedIcons={animatedGreetingIcons} /></div></div>
+                    <div className="greeting-preview-card"><span className="preview-caption"><AppIcon name="sparkles" /> Xem trước</span><div className="greeting-preview" style={{ fontSize: `${greetingFontSize}px`, fontFamily: greetingFontFamily, color: greetingColor, fontWeight: greetingFontFamily.startsWith("'DG ") ? 400 : undefined }}><GreetingText text={greeting || 'Lời chào của bạn'} illustratedIcons={greetingImageIcons} /></div></div>
                     <label>Nội dung lời chào<input ref={greetingInputRef} value={greeting} onChange={(event) => setGreeting(event.target.value)} /></label>
                     <div className="greeting-style-fields">
                       <label>Cỡ chữ<select value={greetingFontSize} onChange={(event) => setGreetingFontSize(event.target.value)}><option value="14">14 px</option><option value="16">16 px</option><option value="18">18 px</option><option value="20">20 px</option><option value="22">22 px</option><option value="24">24 px</option><option value="28">28 px</option>{[32, 36, 40, 48, 56, 64].map((size) => <option key={size} value={size}>{size} px</option>)}</select></label>
@@ -1673,28 +1668,9 @@ function App() {
                       </label>
                       <label className="color-setting-label">Màu chữ<input type="color" value={greetingColor} onChange={(event) => setGreetingColor(event.target.value)} /></label>
                     </div>
-                    <div className="greeting-icon-picker">
-                      <div className="greeting-icon-picker-heading">
-                        <strong>Trang trí lời chào</strong>
-                      </div>
-                      <div className="greeting-icon-options" aria-label="Chèn icon vào lời chào">
-                        {GREETING_ICON_OPTIONS.map((icon) => (
-                          <button
-                            key={icon}
-                            type="button"
-                            className="greeting-icon-option"
-                            aria-label={`Chèn icon ${icon}`}
-                            title={`Chèn ${icon}`}
-                            onClick={() => insertGreetingIcon(icon)}
-                          >
-                            {icon}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="greeting-motion-picker"><strong>Icon động</strong><div className="greeting-motion-options">
-                        {LOVE_ICON_EMOJIS.map((icon) => <button key={icon} type="button" aria-label={`Chèn icon động ${icon}`} onClick={() => { setAnimatedGreetingIcons((current) => [...new Set([...current, icon])]); insertGreetingIcon(icon) }}><img src={loveIcon(icon).gif} alt={icon} /></button>)}
-                      </div><button type="button" className="motion-toggle" aria-pressed={animatedGreetingIcons.length > 0} onClick={() => setAnimatedGreetingIcons((current) => current.length ? [] : [...LOVE_ICON_EMOJIS])}>Chuyển động <span>{animatedGreetingIcons.length ? 'Bật' : 'Tắt'}</span></button></div>
-                    </div>
+                    <div className="greeting-image-picker"><strong>Icon</strong><div className="greeting-image-options">
+                      {ICON_EMOJIS.map((icon) => <button key={icon} type="button" aria-label={`Chèn icon ${icon}`} onClick={() => { setGreetingImageIcons((current) => [...new Set([...current, icon])]); insertGreetingIcon(icon) }}><img src={loveIcon(icon).still} alt={icon} /></button>)}
+                    </div></div>
                     <div className="greeting-palette" role="group" aria-label="Màu lời chào nhanh">
                       {['#81536c', '#c76785', '#326b61', '#356787', '#a47434', '#333044'].map((color) => <button type="button" key={color} aria-label={`Màu ${color}`} aria-pressed={greetingColor === color} style={{ backgroundColor: color }} onClick={() => setGreetingColor(color)}><span>{greetingColor === color ? '✓' : ''}</span></button>)}
                     </div>
@@ -1826,7 +1802,7 @@ function App() {
                           activeTypeId={activeSettingTypeId}
                           onSelect={selectSettingType}
                           onReorder={(source, target) => { const index = data.settingTypes.findIndex((type) => type.id === target); if (index >= 0) setData((current) => reorderSettingType(current, source, index)) }}
-                          onEdit={openTypesManagement}
+                          onEdit={() => { setPublisherAuthorized(false); setPublisherPromptOpen(true) }}
                           hidden={hiddenSettingTypeIds} onHidden={setHiddenSettingTypeIds}
                         />
                       </div>
@@ -1876,7 +1852,7 @@ function App() {
                 </div>
               )}
 
-              {activePanel === 'results' && <ResultsEditor oneToSeven={drawOneToSeven} gdb={drawGdb} onOneToSeven={setDrawOneToSeven} onGdb={setDrawGdb} onOneToSevenBlur={persistOneToSevenDraft} onGdbBlur={persistGdbDraft} count={drawOneToSevenCount} valid={drawOneToSevenValid} gdbValid={drawGdbValid} enabled={calculationEnabled} onToggle={() => setCalculationEnabled((value) => !value)} />}
+              {activePanel === 'results' && <ResultsEditor oneToSeven={drawOneToSeven} gdb={drawGdb} onOneToSeven={setDrawOneToSeven} onGdb={setDrawGdb} onOneToSevenBlur={persistOneToSevenDraft} onGdbBlur={persistGdbDraft} count={drawOneToSevenCount} valid={drawOneToSevenValid} gdbValid={drawGdbValid} enabled={calculationEnabled} onToggle={() => setCalculationEnabled((value) => !value)} onClear={clearDrawField} />}
 
               {activePanel === 'view' && (
                 <div className="sheet-content view-options">
@@ -1889,7 +1865,7 @@ function App() {
             </aside>
           )}
 
-          {toolbarVisible && activePanel === 'edit' && managementPanel && (
+          {toolbarVisible && activePanel === 'edit' && managementPanel && (managementPanel !== 'types' || publisherAuthorized) && (
             <div className={`management-modal-backdrop${managementPanel === 'types' ? ' is-type-manager' : ''}`} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeManagementPanel() }}>
               <section className={`management-modal management-${managementPanel}`} role="dialog" aria-modal="true" aria-label={managementPanel === 'date' ? 'Chỉnh sửa ngày' : managementPanel === 'groups' ? 'Xóa nhóm' : 'Cài đặt nhóm thiết lập'}>
                 <div className="sheet-header">
@@ -1941,13 +1917,27 @@ function App() {
                       <div className="type-editor">
                         <div className="type-name-row">
                           <input ref={typeNameInputRef} className="type-name-input" aria-label="Tên thiết lập" value={editingTypeName} onChange={(event) => setEditingTypeName(event.target.value)} />
-                          <button
-                            className="icon-button type-settings-button"
-                            type="button"
-                            onClick={() => { setPublisherAuthorized(false); setPublisherPromptOpen(true) }}
-                            aria-label={`Cài đặt ${editingType.name}`}
-                            title="Cài đặt hệ số và tên mặc định"
-                          ><AppIcon name="settings" /></button>
+
+                        </div>
+                        <div className="inline-type-coefficients">
+                        {isProfileCoefficientFormula(editingType.formulaId) ? (
+                          <div className="count-coefficient-settings">
+                            <p>{editingType.formulaId === 'da' || editingType.formulaId === 'db' ? 'Hệ số áp dụng theo độ dài chữ số trong ô Liệt kê.' : 'Hệ số áp dụng theo số lượng số trong ô Liệt kê.'}</p>
+                            {getCoefficientProfileKeys(editingType.formulaId).map((key) => (
+                              <div className="count-coefficient-row" key={key}>
+                                <strong>{editingType.formulaId === 'da' || editingType.formulaId === 'db' ? `${key} chữ số` : `${key} số`}</strong>
+                                <label>Hệ số Đánh<input value={editingTypeCoefficientsByCount[key].coefficientD} onChange={(event) => updateCountCoefficient(key, 'coefficientD', event.target.value)} inputMode="decimal" /></label>
+                                <label>Hệ số Trúng<input value={editingTypeCoefficientsByCount[key].coefficientT} onChange={(event) => updateCountCoefficient(key, 'coefficientT', event.target.value)} inputMode="decimal" /></label>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="coefficient-fields">
+                            <label>Hệ số Đánh<input value={editingTypeD} onChange={(event) => setEditingTypeD(event.target.value)} inputMode="decimal" /></label>
+                            <label>Hệ số Trúng<input value={editingTypeT} onChange={(event) => setEditingTypeT(event.target.value)} inputMode="decimal" /></label>
+                          </div>
+                        )}
+                        <button className="button-secondary type-reset-name-button" type="button" onClick={resetSettingTypeName}>Reset tên thiết lập này</button>
                         </div>
                       </div>
                     )}
@@ -1974,38 +1964,7 @@ function App() {
                     </div>
                   </div>
                 )}
-                {managementPanel === 'types' && typeSettingsOpen && publisherAuthorized && editingType && (
-                  <div className="type-settings-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeTypeSettings() }}>
-                    <section className="type-settings-window" role="dialog" aria-modal="true" aria-label={`Cài đặt ${editingType.name}`}>
-                      <div className="sheet-header">
-                        <div className="sheet-header-title-row">
-                          <h2>Cài đặt {editingType.name}</h2>
-                        </div>
-                        <button className="sheet-close" type="button" onClick={closeTypeSettings} aria-label="Đóng cài đặt"><AppIcon name="close" /></button>
-                      </div>
-                      <div className="sheet-content compact-form type-settings-content">
-                        {isProfileCoefficientFormula(editingType.formulaId) ? (
-                          <div className="count-coefficient-settings">
-                            <p>{editingType.formulaId === 'da' || editingType.formulaId === 'db' ? 'Hệ số áp dụng theo độ dài chữ số trong ô Liệt kê.' : 'Hệ số áp dụng theo số lượng số trong ô Liệt kê.'}</p>
-                            {getCoefficientProfileKeys(editingType.formulaId).map((key) => (
-                              <div className="count-coefficient-row" key={key}>
-                                <strong>{editingType.formulaId === 'da' || editingType.formulaId === 'db' ? `${key} chữ số` : `${key} số`}</strong>
-                                <label>Hệ số Đánh<input value={editingTypeCoefficientsByCount[key].coefficientD} onChange={(event) => updateCountCoefficient(key, 'coefficientD', event.target.value)} inputMode="decimal" /></label>
-                                <label>Hệ số Trúng<input value={editingTypeCoefficientsByCount[key].coefficientT} onChange={(event) => updateCountCoefficient(key, 'coefficientT', event.target.value)} inputMode="decimal" /></label>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="coefficient-fields">
-                            <label>Hệ số Đánh<input value={editingTypeD} onChange={(event) => setEditingTypeD(event.target.value)} inputMode="decimal" /></label>
-                            <label>Hệ số Trúng<input value={editingTypeT} onChange={(event) => setEditingTypeT(event.target.value)} inputMode="decimal" /></label>
-                          </div>
-                        )}
-                        <button className="button-secondary type-reset-name-button" type="button" onClick={resetSettingTypeName}>Reset tên thiết lập này</button>
-                      </div>
-                    </section>
-                  </div>
-                )}
+
               </section>
             </div>
           )}

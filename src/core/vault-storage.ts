@@ -13,6 +13,7 @@ export interface GreetingSettingsV2 {
   color: string
   icons: string[]
   animatedIcons?: string[]
+  illustratedIcons?: string[]
 }
 
 export interface QuickSettingsV2 {
@@ -523,6 +524,7 @@ export function normalizeGreetingSettings(value: Partial<GreetingSettingsV2> | n
   const migratedText = suffix ? `${text.trimEnd()}${text.trim() ? ' ' : ''}${suffix}` : text
   return {
     ...(Array.isArray(value?.animatedIcons) && value.animatedIcons.length ? { animatedIcons: [...new Set(value.animatedIcons.filter((icon): icon is string => typeof icon === 'string' && icon.length <= 24))] } : {}),
+    ...(Array.isArray(value?.illustratedIcons) ? { illustratedIcons: [...new Set(value.illustratedIcons.filter((icon): icon is string => typeof icon === 'string' && icon.length <= 24))] } : {}),
     text: migratedText,
     fontSize: typeof value?.fontSize === 'string' ? value.fontSize : '16',
     fontFamily: typeof value?.fontFamily === 'string' ? value.fontFamily : 'Arial, Helvetica, sans-serif',
@@ -549,6 +551,7 @@ export function createQuickSettingsSnapshot(
     settingTypes: data.settingTypes,
     greeting: {
       ...(greeting.animatedIcons?.length ? { animatedIcons: [...greeting.animatedIcons] } : {}),
+      ...(greeting.illustratedIcons?.length ? { illustratedIcons: [...greeting.illustratedIcons] } : {}),
       text: greeting.text,
       fontSize: greeting.fontSize,
       fontFamily: greeting.fontFamily,

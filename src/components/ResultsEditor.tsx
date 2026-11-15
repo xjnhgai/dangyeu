@@ -1,18 +1,21 @@
-import { useRef, useState, type KeyboardEvent, type ClipboardEvent } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent, type ClipboardEvent } from 'react'
 import { cleanListingInput } from '../core/input-text'
 import AppIcon from './AppIcon'
 
-export default function ResultsEditor({ oneToSeven, gdb, onOneToSeven, onGdb, onOneToSevenBlur, onGdbBlur, count, valid, gdbValid, enabled, onToggle }: {
+export default function ResultsEditor({ oneToSeven, gdb, onOneToSeven, onGdb, onOneToSevenBlur, onGdbBlur, count, valid, gdbValid, enabled, onToggle, onClear }: {
   oneToSeven: string; gdb: string; onOneToSeven: (value: string) => void; onGdb: (value: string) => void
   onOneToSevenBlur: () => void; onGdbBlur: () => void
-  count: number; valid: boolean; gdbValid: boolean; enabled: boolean; onToggle: () => void
+  count: number; valid: boolean; gdbValid: boolean; enabled: boolean; onToggle: () => void; onClear: (field: 'list' | 'gdb') => void
 }) {
+  const clipboardGeneration = useRef(0)
+  useEffect(() => () => { clipboardGeneration.current += 1 }, [])
   const [field, setField] = useState<'list' | 'gdb'>('list')
   const [pasteError, setPasteError] = useState('')
   const pending = useRef<{ target: string; value: string; position: number } | null>(null)
   const listRef = useRef<HTMLTextAreaElement>(null)
   const gdbRef = useRef<HTMLInputElement>(null)
   function insert(key: string, target = field) {
+    clipboardGeneration.current += 1
     const input = target === 'list' ? listRef.current : gdbRef.current
     const value = target === 'list' ? oneToSeven : gdb
     const waiting = pending.current?.target === target && pending.current.value === value ? pending.current : null
@@ -41,18 +44,30 @@ export default function ResultsEditor({ oneToSeven, gdb, onOneToSeven, onGdb, on
     insert(target === 'list' ? cleanListingInput(text) : text.replace(/\D/g, ''), target)
   }
   async function pasteFromClipboard(target: 'list' | 'gdb') {
+    const generation = ++clipboardGeneration.current
     setPasteError('')
     try {
       if (!navigator.clipboard?.readText) { setPasteError('Thiết bị chưa hỗ trợ dán nhanh.'); return }
       const text = await navigator.clipboard.readText()
-      insert(target === 'list' ? cleanListingInput(text) : text.replace(/\D/g, ''), target)
-    } catch { setPasteError('Chưa dán được. Hãy cho phép truy cập bộ nhớ tạm.') }
+      if (generation !== clipboardGeneration.current) return
+      const value = target === 'list' ? cleanListingInput(text) : text.replace(/\D/g, '')
+      if (target === 'gdb' && value.length > 5) { setPasteError('GĐB phải gồm đúng 5 chữ số.'); return }
+      pending.current = null
+      setField(target)
+      if (target === 'list') onOneToSeven(value); else onGdb(value)
+      requestAnimationFrame(() => { const input = target === 'list' ? listRef.current : gdbRef.current; input?.setSelectionRange(value.length, value.length) })
+    } catch { if (generation === clipboardGeneration.current) setPasteError('Chưa dán được. Hãy cho phép truy cập bộ nhớ tạm.') }
+  }
+  function clearField(target: 'list' | 'gdb') {
+    clipboardGeneration.current += 1
+    pending.current = null
+    setPasteError(''); setField(target); onClear(target)
   }
   return <div className="sheet-content results-editor">
     <div className="results-fields">
-      <div className="result-field"><div className="result-label-row"><label htmlFor="result-one-to-seven">1–7</label><button type="button" onClick={() => void pasteFromClipboard('list')} aria-label="Dán kết quả 1–7">Dán</button></div><textarea id="result-one-to-seven" aria-label="1–7" ref={listRef} rows={3} readOnly inputMode="none" value={oneToSeven} onChange={(event) => onOneToSeven(cleanListingInput(event.target.value))} onFocus={() => setField('list')} onBlur={onOneToSevenBlur} onKeyDown={keyDown} onPaste={(event) => paste(event, 'list')} aria-invalid={!valid} /></div>
+      <div className="result-field"><div className="result-label-row"><label htmlFor="result-one-to-seven">1–7</label><button type="button" onClick={() => void pasteFromClipboard('list')} aria-label="Dán kết quả 1–7"><AppIcon name="clipboard" /></button><button type="button" aria-label="Xóa hết kết quả 1–7" onClick={() => clearField('list')}><AppIcon name="trash" /></button></div><textarea id="result-one-to-seven" aria-label="1–7" ref={listRef} rows={3} readOnly inputMode="none" value={oneToSeven} onChange={(event) => onOneToSeven(cleanListingInput(event.target.value))} onFocus={() => setField('list')} onBlur={onOneToSevenBlur} onKeyDown={keyDown} onPaste={(event) => paste(event, 'list')} aria-invalid={!valid} /></div>
       <div className={`draw-count-status${valid ? '' : ' is-invalid'}`}><span>{count}/26 số</span><strong>{!oneToSeven.trim() ? 'Chưa nhập' : valid ? 'Hợp lệ' : 'Không hợp lệ'}</strong></div>
-      <div className="result-field"><div className="result-label-row"><label htmlFor="result-gdb">GĐB</label><button type="button" onClick={() => void pasteFromClipboard('gdb')} aria-label="Dán GĐB">Dán</button></div><input id="result-gdb" aria-label="GĐB" ref={gdbRef} readOnly inputMode="none" value={gdb} maxLength={5} onFocus={() => setField('gdb')} onChange={(event) => onGdb(event.target.value.replace(/\D/g, '').slice(0, 5))} onBlur={onGdbBlur} onKeyDown={keyDown} onPaste={(event) => paste(event, 'gdb')} aria-invalid={!gdbValid} /></div>
+      <div className="result-field"><div className="result-label-row"><label htmlFor="result-gdb">GĐB</label><button type="button" onClick={() => void pasteFromClipboard('gdb')} aria-label="Dán GĐB"><AppIcon name="clipboard" /></button><button type="button" aria-label="Xóa hết GĐB" onClick={() => clearField('gdb')}><AppIcon name="trash" /></button></div><input id="result-gdb" aria-label="GĐB" ref={gdbRef} readOnly inputMode="none" value={gdb} maxLength={5} onFocus={() => setField('gdb')} onChange={(event) => onGdb(event.target.value.replace(/\D/g, '').slice(0, 5))} onBlur={onGdbBlur} onKeyDown={keyDown} onPaste={(event) => paste(event, 'gdb')} aria-invalid={!gdbValid} /></div>
       {!gdbValid && <div className="draw-count-status is-invalid"><strong>GĐB phải gồm đúng 5 chữ số.</strong></div>}
     </div>
     {pasteError && <p className="settings-error" role="status">{pasteError}</p>}
