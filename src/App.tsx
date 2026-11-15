@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 
+import DrawerPicker from './components/DrawerPicker'
+import ResultsEditor from './components/ResultsEditor'
+import { loveIcon } from './core/love-icons'
 import GreetingText from './components/GreetingText'
 import AppIcon from './components/AppIcon'
 import { clampPaperZoom } from './core/paper-zoom'
 import A4PageV2 from './components/A4PageV2'
 import ListingInput from './components/ListingInput'
-import { cleanListingInput } from './core/input-text'
 import EntryDock from './components/EntryDock'
 import PublisherPrompt from './components/PublisherPrompt'
 import { buildEntryPreview, type EntryTarget } from './core/entry-preview'
@@ -22,7 +24,6 @@ import {
   createCalculationDataV2,
   createGroup3FromDefaults,
   deleteGroup1V2,
-  deleteSettingType,
   deleteGroup2V2,
   deleteGroup3V2,
   reorderSettingType,
@@ -143,318 +144,27 @@ function formatLibraryAmount(value: number | null): string {
 }
 
 
-type SettingTypePickerProps = {
-  types: readonly SettingTypeDefinition[]
-  groups3: readonly Group3[]
-  activeTypeId: EntityId | null
-  onSelect: (typeId: EntityId) => void
-  onReorder: (source: string, target: string) => void
-  onEdit: () => void
-  onDelete: () => void
-}
-
-/** One-line formula picker. Configured types are fitted first; overflow lives under +. */
-function SettingTypePicker({ types, groups3, activeTypeId, onSelect, onReorder, onEdit, onDelete }: SettingTypePickerProps) {
-  const visibleRowRef = useRef<HTMLDivElement>(null)
-  const measureRowRef = useRef<HTMLDivElement>(null)
-  const [visibleIds, setVisibleIds] = useState<string[]>([])
-  const [overflowOpen, setOverflowOpen] = useState(false)
-  const drag = useRef<{ source: string; target: string; x: number; y: number; moving: boolean } | null>(null)
-  const suppress = useRef(false)
-  const configuredIds = useMemo(() => new Set(groups3.map((item) => item.settingTypeId)), [groups3])
-  const priorityTypes = useMemo(() => [
-    ...types.filter((type) => type.id === activeTypeId),
-    ...types.filter((type) => type.id !== activeTypeId && configuredIds.has(type.id)),
-    ...types.filter((type) => type.id !== activeTypeId && !configuredIds.has(type.id)),
-  ], [types, configuredIds, activeTypeId])
-
-  useEffect(() => {
-    const visibleRow = visibleRowRef.current
-    const measureRow = measureRowRef.current
-    if (!visibleRow || !measureRow) return
-
-    const updateVisibleTypes = () => {
-      const availableWidth = visibleRow.clientWidth
-      if (!availableWidth) return
-      const measured = new Map<string, number>()
-      measureRow.querySelectorAll<HTMLElement>('[data-measure-type-id]').forEach((element) => {
-        const id = element.dataset.measureTypeId
-        if (id) measured.set(id, element.getBoundingClientRect().width)
-      })
-      const moreButton = measureRow.querySelector<HTMLElement>('[data-measure-more]')
-      const moreWidth = moreButton?.getBoundingClientRect().width ?? 34
-      const gap = 5
-      const allWidth = types.reduce((sum, type, index) => sum + (measured.get(type.id) ?? 0) + (index > 0 ? gap : 0), 0)
-      let nextIds: string[]
-
-      if (allWidth <= availableWidth) {
-        nextIds = types.map((type) => type.id)
-      } else {
-        const budget = Math.max(0, availableWidth - moreWidth - gap)
-        let used = 0
-        nextIds = []
-        for (const type of priorityTypes) {
-          const width = measured.get(type.id) ?? 0
-          const need = width + (nextIds.length ? gap : 0)
-          if (used + need <= budget) {
-            nextIds.push(type.id)
-            used += need
-          }
-        }
-      }
-      setVisibleIds((current) => current.length === nextIds.length && current.every((id, index) => id === nextIds[index]) ? current : nextIds)
-    }
-
-    updateVisibleTypes()
-    if (typeof ResizeObserver === 'undefined') {
-      window.addEventListener('resize', updateVisibleTypes)
-      return () => window.removeEventListener('resize', updateVisibleTypes)
-    }
-    const observer = new ResizeObserver(updateVisibleTypes)
-    observer.observe(visibleRow)
-    return () => observer.disconnect()
-  }, [types, priorityTypes])
-
-  const visibleIdSet = new Set(visibleIds)
-  const visibleTypes = types.filter((type) => visibleIdSet.has(type.id))
-  const overflowTypes = types.filter((type) => !visibleIdSet.has(type.id))
-
-  const renderTypeButton = (type: SettingTypeDefinition, measuring = false) => {
-    const configured = configuredIds.has(type.id)
-    const selected = activeTypeId === type.id
-    const stateClass = selected ? ' is-selected' : configured ? ' is-configured' : ' is-unconfigured'
-    return (
-      <button
-        type="button"
-        className={`choice-chip setting-type-chip${stateClass}`}
-        key={type.id}
-        data-measure-type-id={measuring ? type.id : undefined}
-        data-drag-type={measuring ? undefined : type.id}
-        onPointerDown={measuring ? undefined : (event) => { if (event.button !== 0) return; suppress.current = false; drag.current = { source: type.id, target: type.id, x: event.clientX, y: event.clientY, moving: false }; event.currentTarget.setPointerCapture(event.pointerId) }}
-        onPointerMove={measuring ? undefined : (event) => { const current = drag.current; if (!current) return; if (Math.hypot(event.clientX - current.x, event.clientY - current.y) < 7 && !current.moving) return; current.moving = true; event.preventDefault(); const id = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-drag-type]')?.dataset.dragType; if (id) current.target = id; if (document.elementFromPoint(event.clientX, event.clientY)?.closest('.type-overflow-trigger')) setOverflowOpen(true) }}
-        onPointerUp={measuring ? undefined : () => { const current = drag.current; drag.current = null; if (current?.moving) { suppress.current = true; onReorder(current.source, current.target) } }}
-        onPointerCancel={() => { drag.current = null }}
-        onClick={measuring ? undefined : () => { if (suppress.current) { suppress.current = false; return }; onSelect(type.id); setOverflowOpen(false) }}
-        aria-pressed={selected}
-        tabIndex={measuring ? -1 : undefined}
-      >{type.name}</button>
-    )
-  }
-
-  return (
-    <div className="setting-type-picker-wrap">
-      <div className="setting-type-picker-row">
-        <div className="compact-chip-list type-chip-list" ref={visibleRowRef}>
-          {visibleTypes.map((type) => renderTypeButton(type))}
-          {overflowTypes.length > 0 && (
-            <button className="choice-chip add-chip type-overflow-trigger" type="button" onClick={() => setOverflowOpen((value) => !value)} aria-expanded={overflowOpen} aria-label="Danh sách nhóm thiết lập khác" title="Danh sách nhóm thiết lập khác"><AppIcon name="list" /></button>
-          )}
-        </div>
-        <button className="icon-button chip-edit-button" type="button" onClick={onEdit} aria-label="Sửa thiết lập"><AppIcon name="settings" /></button>
-        <button className="icon-button chip-edit-button" type="button" onClick={onDelete} aria-label="Xóa nhóm thiết lập"><AppIcon name="trash" /></button>
-      </div>
-      {overflowOpen && overflowTypes.length > 0 && (
-        <div className="type-overflow-menu" aria-label="Các nhóm thiết lập còn lại">
-          {overflowTypes.map((type) => renderTypeButton(type))}
-        </div>
-      )}
-      <div className="type-chip-measure" ref={measureRowRef} aria-hidden="true">
-        {types.map((type) => renderTypeButton(type, true))}
-        <button className="choice-chip add-chip type-overflow-trigger" type="button" data-measure-more="true" tabIndex={-1}><AppIcon name="list" /></button>
-      </div>
-    </div>
-  )
-}
-
-type Group2NamePickerProps = {
-  names: readonly string[]
-  configuredNameKeys: ReadonlySet<string>
-  activeNameKey: string
-  onSelect: (name: string) => void
-  onReorder: (source: string, target: string) => void
-  onAdd: () => void
-  onEdit: () => void
-}
-
 function group2NameKey(name: string): string {
   return name.trim().normalize('NFC').toLocaleLowerCase('vi-VN')
 }
 
-/** Keep configured names first, then fit quick names into the remaining row width. */
-function Group2NamePicker({
-  names,
-  configuredNameKeys,
-  activeNameKey,
-  onSelect,
-  onReorder,
-  onAdd,
-  onEdit,
-}: Group2NamePickerProps) {
-  const visibleRowRef = useRef<HTMLDivElement>(null)
-  const measureRowRef = useRef<HTMLDivElement>(null)
-  const [visibleNames, setVisibleNames] = useState<string[]>([])
-  const [overflowOpen, setOverflowOpen] = useState(false)
-  const dragRef = useRef<{ source: string; target: string; startX: number; startY: number; moving: boolean } | null>(null)
-  const suppressClickRef = useRef(false)
-  const [dragSource, setDragSource] = useState('')
-  const [dragTarget, setDragTarget] = useState('')
+function SettingTypePicker({ types, groups3, activeTypeId, onSelect, onReorder, onEdit, hidden, onHidden }: {
+  types: readonly SettingTypeDefinition[]; groups3: readonly Group3[]; activeTypeId: string | null
+  onSelect: (id: string) => void; onReorder: (source: string, target: string) => void; onEdit: () => void
+  hidden: string[]; onHidden: (ids: string[]) => void
+}) {
+  return <DrawerPicker kind="type" items={types.map((type) => ({ id: type.id, label: type.name, configured: groups3.some((row) => row.settingTypeId === type.id) }))} selected={activeTypeId ?? ''} hidden={hidden} onHidden={onHidden} onSelect={onSelect} onReorder={onReorder} listLabel="Danh sách nhóm thiết lập khác" actions={<><span className="drawer-action-spacer" /><button className="icon-button chip-edit-button" type="button" onClick={onEdit} aria-label="Sửa thiết lập"><AppIcon name="settings" /></button></>} />
+}
 
-  function startDrag(event: ReactPointerEvent<HTMLButtonElement>, name: string) {
-    if (event.button !== 0 || !event.isPrimary) return
-    suppressClickRef.current = false
-    dragRef.current = { source: name, target: name, startX: event.clientX, startY: event.clientY, moving: false }
-    event.currentTarget.setPointerCapture(event.pointerId)
-  }
-
-  function moveDrag(event: ReactPointerEvent<HTMLButtonElement>) {
-    const drag = dragRef.current
-    if (!drag) return
-    if (!drag.moving && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 7) return
-    event.preventDefault()
-    drag.moving = true
-    setDragSource(group2NameKey(drag.source))
-    const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-group2-drag-key]')
-    const targetName = names.find((name) => group2NameKey(name) === target?.dataset.group2DragKey)
-    if (targetName) { drag.target = targetName; setDragTarget(group2NameKey(targetName)) }
-    // Holding a dragged chip over the list button reveals hidden drop targets.
-    if (document.elementFromPoint(event.clientX, event.clientY)?.closest('.group2-overflow-trigger')) setOverflowOpen(true)
-  }
-
-  function finishDrag(cancelled = false) {
-    const drag = dragRef.current
-    dragRef.current = null
-    setDragSource(''); setDragTarget('')
-    if (!drag?.moving) return
-    suppressClickRef.current = true
-    if (!cancelled && drag.source !== drag.target) onReorder(drag.source, drag.target)
-  }
-
-
-  useEffect(() => {
-    const visibleRow = visibleRowRef.current
-    const measureRow = measureRowRef.current
-    if (!visibleRow || !measureRow) return
-
-    const updateVisibleNames = () => {
-      const availableWidth = visibleRow.clientWidth
-      if (!availableWidth) return
-
-      const measured = new Map<number, number>()
-      measureRow.querySelectorAll<HTMLElement>('[data-measure-group2-index]').forEach((element) => {
-        const index = Number(element.dataset.measureGroup2Index)
-        if (Number.isInteger(index)) measured.set(index, element.getBoundingClientRect().width)
-      })
-      const moreButton = measureRow.querySelector<HTMLElement>('[data-measure-group2-more]')
-      const moreWidth = moreButton?.getBoundingClientRect().width ?? 24
-      const gap = 5
-      const allWidth = names.reduce((sum, _name, index) =>
-        sum + (measured.get(index) ?? 0) + (index > 0 ? gap : 0), 0)
-
-      let nextNames: string[]
-      if (allWidth <= availableWidth) {
-        nextNames = [...names]
-      } else {
-        const budget = Math.max(0, availableWidth - moreWidth - (names.length ? gap : 0))
-        let used = 0
-        nextNames = []
-        names.forEach((name, index) => {
-          const width = measured.get(index) ?? 0
-          const required = width + (nextNames.length ? gap : 0)
-          if (used + required <= budget) {
-            nextNames.push(name)
-            used += required
-          }
-        })
-      }
-
-      setVisibleNames((current) => current.length === nextNames.length
-        && current.every((name, index) => name === nextNames[index])
-        ? current
-        : nextNames)
-    }
-
-    updateVisibleNames()
-    if (typeof ResizeObserver === 'undefined') {
-      window.addEventListener('resize', updateVisibleNames)
-      return () => window.removeEventListener('resize', updateVisibleNames)
-    }
-    const observer = new ResizeObserver(updateVisibleNames)
-    observer.observe(visibleRow)
-    return () => observer.disconnect()
-  }, [names])
-
-  const visibleNameKeys = new Set(visibleNames.map(group2NameKey))
-  const overflowNames = names.filter((name) => !visibleNameKeys.has(group2NameKey(name)))
-
-  const renderNameButton = (name: string, measuring = false, index?: number, inList = false) => {
-    const key = group2NameKey(name)
-    const configured = configuredNameKeys.has(key)
-    const selected = activeNameKey === key
-    const stateClass = selected ? ' is-selected' : configured ? ' is-configured' : ' is-quick'
-    return (
-      <button
-        className={`choice-chip group2-draggable${stateClass}${dragSource === key ? ' is-dragging' : ''}${dragTarget === key && dragSource !== key ? ' is-drop-target' : ''}`}
-        type="button"
-        key={`${key}-${index ?? 'visible'}`}
-        data-measure-group2-index={measuring ? index : undefined}
-        data-group2-drag-key={measuring ? undefined : key}
-        onPointerDown={measuring ? undefined : (event) => startDrag(event, name)}
-        onPointerMove={measuring ? undefined : moveDrag}
-        onPointerUp={measuring ? undefined : () => finishDrag()}
-        onPointerCancel={measuring ? undefined : () => finishDrag(true)}
-        onLostPointerCapture={measuring ? undefined : () => finishDrag(true)}
-        onContextMenu={measuring ? undefined : (event) => event.preventDefault()}
-        onKeyDown={measuring ? undefined : (event) => {
-          if (!event.altKey || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return
-          event.preventDefault()
-          const index = names.indexOf(name)
-          const target = names[index + (event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1)]
-          if (target) onReorder(name, target)
-        }}
-        title={measuring ? undefined : 'Kéo để sắp xếp; Alt + phím mũi tên khi dùng bàn phím'}
-        onClick={measuring ? undefined : () => {
-          if (suppressClickRef.current) { suppressClickRef.current = false; return }
-          setOverflowOpen(false); onSelect(name)
-        }}
-        aria-pressed={selected}
-        aria-roledescription={inList ? 'Tên nhóm' : undefined}
-        tabIndex={measuring ? -1 : undefined}
-      >{name}</button>
-    )
-  }
-
-  const listIcon = <AppIcon name="list" />
-
-  return (
-    <div className="group2-name-picker-wrap">
-      <div className="chip-edit-row group2-chip-row">
-        <div className="compact-chip-list group2-name-chip-list" ref={visibleRowRef}>
-          {visibleNames.map((name, index) => renderNameButton(name, false, index))}
-          {overflowNames.length > 0 && (
-            <button
-              className="icon-button quick-group-list-trigger group2-overflow-trigger"
-              type="button"
-              onClick={() => setOverflowOpen((value) => !value)}
-              aria-expanded={overflowOpen}
-              aria-label="Danh sách tên nhóm còn lại"
-              title="Danh sách tên nhóm còn lại"
-            >{listIcon}</button>
-          )}
-        </div>
-        <button className="choice-chip add-chip group2-add-trigger" type="button" onClick={() => { setOverflowOpen(false); onAdd() }} aria-label="Tạo tên nhóm mới" title="Tạo tên nhóm mới"><AppIcon name="plus" /></button>
-        <button className="icon-button chip-edit-button" type="button" onClick={() => { setOverflowOpen(false); onEdit() }} aria-label="Xóa nhóm"><AppIcon name="trash" /></button>
-      </div>
-      {overflowOpen && overflowNames.length > 0 && (
-        <div className="quick-group-list group2-overflow-menu" role="list" aria-label="Tên nhóm còn lại">
-          {overflowNames.map((name, index) => renderNameButton(name, false, index, true))}
-        </div>
-      )}
-      <div className="type-chip-measure group2-chip-measure" ref={measureRowRef} aria-hidden="true">
-        {names.map((name, index) => renderNameButton(name, true, index))}
-        <button className="icon-button quick-group-list-trigger group2-overflow-trigger" type="button" data-measure-group2-more="true" tabIndex={-1}>{listIcon}</button>
-      </div>
-    </div>
-  )
+function Group2NamePicker({ names, configuredNameKeys, activeNameKey, onSelect, onReorder, onAdd, onEdit, hidden, onHidden }: {
+  names: readonly string[]; configuredNameKeys: ReadonlySet<string>; activeNameKey: string
+  onSelect: (name: string) => void; onReorder: (source: string, target: string) => void
+  onAdd: () => void; onEdit: () => void; hidden: string[]; onHidden: (ids: string[]) => void
+}) {
+  return <DrawerPicker kind="group2" items={names.map((name) => ({ id: group2NameKey(name), label: name, configured: configuredNameKeys.has(group2NameKey(name)) }))} selected={activeNameKey} hidden={hidden} onHidden={onHidden}
+    onSelect={(id) => { const name = names.find((item) => group2NameKey(item) === id); if (name) onSelect(name) }}
+    onReorder={(source, target) => { const a = names.find((name) => group2NameKey(name) === source); const b = names.find((name) => group2NameKey(name) === target); if (a && b) onReorder(a, b) }}
+    listLabel="Danh sách tên nhóm còn lại" actions={<><button className="choice-chip add-chip group2-add-trigger" type="button" onClick={onAdd} aria-label="Tạo tên nhóm mới"><AppIcon name="plus" /></button><button className="icon-button chip-edit-button" type="button" onClick={onEdit} aria-label="Xóa nhóm"><AppIcon name="trash" /></button></>} />
 }
 
 function dateSortValue(label: string): number {
@@ -577,7 +287,8 @@ function App() {
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [animatedGreetingIcons, setAnimatedGreetingIcons] = useState<string[]>([])
-  const [typeDeleteOpen, setTypeDeleteOpen] = useState(false)
+  const [hiddenGroup2Names, setHiddenGroup2Names] = useState<string[]>([])
+  const [hiddenSettingTypeIds, setHiddenSettingTypeIds] = useState<string[]>([])
   const [greeting, setGreeting] = useState('Hello')
   const [homeSettingsOpen, setHomeSettingsOpen] = useState(false)
   const [homeSettingsSection, setHomeSettingsSection] = useState<HomeSettingsSection>('menu')
@@ -614,7 +325,7 @@ function App() {
   const [draggingTypeId, setDraggingTypeId] = useState<EntityId | null>(null)
   const [typeDropTargetId, setTypeDropTargetId] = useState<EntityId | null>(null)
   useEffect(() => {
-    const closePrivatePanels = () => { setPublisherAuthorized(false); setTypeSettingsOpen(false); setPublisherPromptOpen(false); setEntryDock(null); setTypeDeleteOpen(false) }
+    const closePrivatePanels = () => { setPublisherAuthorized(false); setTypeSettingsOpen(false); setPublisherPromptOpen(false); setEntryDock(null) }
     const onHidden = () => { if (document.visibilityState === 'hidden') closePrivatePanels() }
     document.addEventListener('visibilitychange', onHidden)
     window.addEventListener('pagehide', closePrivatePanels)
@@ -715,6 +426,8 @@ function App() {
 
         if (loadedQuickSettings) {
           setQuickGroup2Suggestions(loadedQuickSettings.group2NameSuggestions)
+          setHiddenGroup2Names(Array.isArray(loadedQuickSettings.hiddenGroup2Names) ? loadedQuickSettings.hiddenGroup2Names.filter((id) => typeof id === 'string') : [])
+          setHiddenSettingTypeIds(Array.isArray(loadedQuickSettings.hiddenSettingTypeIds) ? loadedQuickSettings.hiddenSettingTypeIds.filter((id) => typeof id === 'string') : [])
           const migratedGreeting = normalizeGreetingSettings(loadedQuickSettings.greeting)
           setAnimatedGreetingIcons(migratedGreeting.animatedIcons ?? [])
           setGreeting(migratedGreeting.text)
@@ -844,11 +557,11 @@ function App() {
     return summaries
   }, [data])
 
-  const quickSettingsSnapshot = useMemo(() => createQuickSettingsSnapshot(
+  const quickSettingsSnapshot = useMemo(() => ({ ...createQuickSettingsSnapshot(
     data,
     quickGroup2Suggestions,
     { text: greeting, fontSize: greetingFontSize, fontFamily: greetingFontFamily, color: greetingColor, icons: [], animatedIcons: animatedGreetingIcons },
-  ), [data, quickGroup2Suggestions, greeting, greetingFontSize, greetingFontFamily, greetingColor, animatedGreetingIcons])
+  ), hiddenGroup2Names, hiddenSettingTypeIds }), [data, quickGroup2Suggestions, greeting, greetingFontSize, greetingFontFamily, greetingColor, animatedGreetingIcons, hiddenGroup2Names, hiddenSettingTypeIds])
 
   const currentWorkspaceSnapshot = useMemo<CalculationWorkspaceV2>(() => ({
     schemaVersion: 2,
@@ -1065,7 +778,6 @@ function App() {
     setGreeting(nextGreeting)
     window.requestAnimationFrame(() => {
       const caret = start + icon.length
-      input?.focus()
       input?.setSelectionRange(caret, caret)
     })
   }
@@ -1968,8 +1680,8 @@ function App() {
                         ))}
                       </div>
                       <div className="greeting-motion-picker"><strong>Icon động</strong><div className="greeting-motion-options">
-                        {['💖', '🦋', '⭐', '🌸', '🐰', '🎀', '🫧', '🐣'].map((icon) => <button key={icon} type="button" aria-label={`Chèn icon động ${icon}`} onClick={() => { setAnimatedGreetingIcons((current) => [...new Set([...current, icon])]); insertGreetingIcon(icon) }}><span className="greeting-emoji is-animated">{icon}</span></button>)}
-                      </div><button type="button" className="motion-toggle" aria-pressed={animatedGreetingIcons.length > 0} onClick={() => setAnimatedGreetingIcons((current) => current.length ? [] : ['💖', '🦋', '⭐', '🌸', '🐰', '🎀', '🫧', '🐣'])}>Chuyển động <span>{animatedGreetingIcons.length ? 'Bật' : 'Tắt'}</span></button></div>
+                        {['🐻', '🐰', '💖'].map((icon) => <button key={icon} type="button" aria-label={`Chèn icon động ${icon}`} onClick={() => { setAnimatedGreetingIcons((current) => [...new Set([...current, icon])]); insertGreetingIcon(icon) }}><img src={loveIcon(icon).gif} alt={icon} /></button>)}
+                      </div><button type="button" className="motion-toggle" aria-pressed={animatedGreetingIcons.length > 0} onClick={() => setAnimatedGreetingIcons((current) => current.length ? [] : ['🐻', '🐰', '💖'])}>Chuyển động <span>{animatedGreetingIcons.length ? 'Bật' : 'Tắt'}</span></button></div>
                     </div>
                     <div className="greeting-palette" role="group" aria-label="Màu lời chào nhanh">
                       {['#81536c', '#c76785', '#326b61', '#356787', '#a47434', '#333044'].map((color) => <button type="button" key={color} aria-label={`Màu ${color}`} aria-pressed={greetingColor === color} style={{ backgroundColor: color }} onClick={() => setGreetingColor(color)}><span>{greetingColor === color ? '✓' : ''}</span></button>)}
@@ -2067,6 +1779,7 @@ function App() {
 
                   <div className="compact-section group2-chip-area">
                     <Group2NamePicker
+                      hidden={hiddenGroup2Names} onHidden={setHiddenGroup2Names}
                       names={group2PickerNames}
                       configuredNameKeys={configuredGroup2NameKeys}
                       activeNameKey={selectedGroup2NameKey}
@@ -2099,7 +1812,7 @@ function App() {
                           onSelect={selectSettingType}
                           onReorder={(source, target) => { const index = data.settingTypes.findIndex((type) => type.id === target); if (index >= 0) setData((current) => reorderSettingType(current, source, index)) }}
                           onEdit={openTypesManagement}
-                          onDelete={() => setTypeDeleteOpen(true)}
+                          hidden={hiddenSettingTypeIds} onHidden={setHiddenSettingTypeIds}
                         />
                       </div>
 
@@ -2148,22 +1861,7 @@ function App() {
                 </div>
               )}
 
-              {activePanel === 'results' && (
-                <div className="sheet-content compact-form">
-                  <label>1–7<textarea rows={3} inputMode="decimal" value={drawOneToSeven} onChange={(event) => setDrawOneToSeven(cleanListingInput(event.target.value))} onBlur={persistOneToSevenDraft} aria-invalid={!drawOneToSevenValid} /></label>
-                  <div className={`draw-count-status${drawOneToSevenValid ? '' : ' is-invalid'}`}>
-                    <span>{drawOneToSevenCount}/26 số</span>
-                    <strong>{!drawOneToSeven.trim() ? 'Chưa nhập' : drawOneToSevenValid ? 'Hợp lệ' : 'Không hợp lệ'}</strong>
-                  </div>
-                  <label>GĐB<input value={drawGdb} onChange={(event) => setDrawGdb(event.target.value)} onBlur={persistGdbDraft} inputMode="numeric" maxLength={5} aria-invalid={!drawGdbValid} /></label>
-                  {!drawGdbValid && <div className="draw-count-status is-invalid"><strong>GĐB phải gồm đúng 5 chữ số.</strong></div>}
-                  <div className="results-footer">
-                    <button className={calculationEnabled ? 'calculation-toggle is-on' : 'calculation-toggle'} type="button" onClick={() => setCalculationEnabled((value) => !value)} aria-pressed={calculationEnabled}>
-                      <AppIcon name="calculator" /><span>Tính Toán</span><span className="calculation-status" aria-hidden="true">{calculationEnabled ? 'Bật' : 'Tắt'}</span>
-                    </button>
-                  </div>
-                </div>
-              )}
+              {activePanel === 'results' && <ResultsEditor oneToSeven={drawOneToSeven} gdb={drawGdb} onOneToSeven={setDrawOneToSeven} onGdb={setDrawGdb} onOneToSevenBlur={persistOneToSevenDraft} onGdbBlur={persistGdbDraft} count={drawOneToSevenCount} valid={drawOneToSevenValid} gdbValid={drawGdbValid} enabled={calculationEnabled} onToggle={() => setCalculationEnabled((value) => !value)} />}
 
               {activePanel === 'view' && (
                 <div className="sheet-content view-options">
@@ -2226,6 +1924,7 @@ function App() {
                   <div className="sheet-content compact-form">
                     {editingType && (
                       <div className="type-editor">
+                        <div className="settings-type-banner"><AppIcon name="settings" /><span>Nhóm thiết lập<strong>{editingType.name}</strong></span></div>
                         <div className="type-name-row">
                           <input className="type-name-input" aria-label="Tên thiết lập" value={editingTypeName} onChange={(event) => setEditingTypeName(event.target.value)} />
                           <button
@@ -2293,22 +1992,6 @@ function App() {
                     </section>
                   </div>
                 )}
-              </section>
-            </div>
-          )}
-
-          {toolbarVisible && activePanel === 'edit' && typeDeleteOpen && (
-            <div className="management-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setTypeDeleteOpen(false) }}>
-              <section className="management-modal type-delete-modal" role="dialog" aria-modal="true" aria-label="Xóa nhóm thiết lập">
-                <div className="sheet-header"><h2>Xóa nhóm thiết lập</h2><button type="button" className="sheet-close" aria-label="Đóng xóa nhóm thiết lập" onClick={() => setTypeDeleteOpen(false)}><AppIcon name="close" /></button></div>
-                <div className="sheet-content deletion-list">
-                  {data.settingTypes.map((type) => {
-                    const used = data.groups1.some((page) => page.groups2.some((group) => group.groups3.some((row) => row.settingTypeId === type.id)))
-                    const draft = Object.entries(draftRowsByType).some(([key, rows]) => key.endsWith(`:${type.id}`) && rows.some((row) => row.listing.trim() || row.point.trim()))
-                    const blocked = used || draft || data.settingTypes.length <= 1
-                    return <div className="deletion-row" key={type.id}><span className="deletion-badge"><AppIcon name="pages" /></span><span><strong>{type.name}</strong><small>{used ? 'Đang có dữ liệu' : draft ? 'Có nội dung nhập dở' : data.settingTypes.length <= 1 ? 'Giữ lại ít nhất một nhóm' : 'Chưa sử dụng'}</small></span><button type="button" className="icon-button danger-icon" disabled={blocked} aria-label={`Xóa nhóm thiết lập ${type.name}`} onClick={() => { if (!window.confirm(`Xóa nhóm thiết lập “${type.name}” khỏi danh sách dùng chung?`)) return; runAction(() => { const next = deleteSettingType(data, type.id); setData(next); if (activeSettingTypeId === type.id) setActiveSettingTypeId(next.settingTypes[0]?.id ?? null) }) }}><AppIcon name="trash" /></button></div>
-                  })}
-                </div>
               </section>
             </div>
           )}

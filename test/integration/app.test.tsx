@@ -435,30 +435,63 @@ describe('application integration', () => {
     await openApp()
     const greeting = document.querySelector('.home-greeting') as HTMLElement
     expect(greeting.style.fontSize).toBe('48px')
-    expect(greeting.querySelector('.greeting-emoji.is-animated')?.textContent).toBe('💖')
-    expect(greeting.textContent).toBe('Chào💖')
+    expect(greeting.querySelector<HTMLImageElement>('.greeting-gif img')?.alt).toBe('💖')
+    expect(greeting.textContent).toBe('Chào')
   })
-  it('only deletes unused setting groups after confirmation and persists deletion', async () => {
-    const workspace = fixture()
-    const target = workspace.data.settingTypes[1]
-    await saveCalculationWorkspace(workspace)
+  it('keeps result fields on an internal numeric keypad without resetting paper scroll', async () => {
+    await saveCalculationWorkspace(fixture())
     await openApp()
     fireEvent.click(await screen.findByRole('button', { name: /Mở A4 ngày/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Xóa nhóm thiết lập', exact: true }))
-    expect((screen.getByRole('button', { name: 'Xóa nhóm thiết lập LB' }) as HTMLButtonElement).disabled).toBe(true)
-    const remove = screen.getByRole('button', { name: `Xóa nhóm thiết lập ${target.name}`, exact: true })
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
-    fireEvent.click(remove)
-    expect((await loadCalculationWorkspace())!.value.data.settingTypes.some((item) => item.id === target.id)).toBe(true)
-    confirm.mockReturnValue(true)
-    fireEvent.click(remove)
-    await waitFor(async () => {
-      expect((await loadCalculationWorkspace())!.value.data.settingTypes.some((item) => item.id === target.id)).toBe(false)
-      expect((await loadQuickSettings())!.value.settingTypes.some((item) => item.id === target.id)).toBe(false)
-    }, { timeout: 3000 })
-    cleanup()
+    fireEvent.click(screen.getByRole('button', { name: 'Kết Quả' }))
+    const viewport = document.querySelector('.a4-v2-scroll') as HTMLElement
+    viewport.scrollTop = 88
+    const input = screen.getByLabelText('1–7') as HTMLTextAreaElement
+    const gdb = screen.getByLabelText('GĐB') as HTMLInputElement
+    expect(input.readOnly).toBe(true)
+    expect(gdb.inputMode).toBe('none')
+    fireEvent.focus(input)
+    fireEvent.focus(gdb)
+    for (const key of ['1', '2', '3', '4', '5', '6']) fireEvent.click(screen.getByRole('button', { name: `Nhập kết quả ${key}` }))
+    expect(gdb.value).toBe('12345')
+    expect((screen.getByRole('button', { name: 'Phân cách kết quả' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(viewport.scrollTop).toBe(88)
+    expect(screen.queryByRole('button', { name: 'Xóa nhóm thiết lập', exact: true })).toBeNull()
+  })
+  for (const kind of ['group2', 'type'] as const) it(`moves ${kind} chips into and out of the always-visible drawer and saves visibility`, async () => {
+    await saveCalculationWorkspace(fixture())
     await openApp()
-    expect((await loadCalculationWorkspace())!.value.data.settingTypes.some((item) => item.id === target.id)).toBe(false)
+    fireEvent.click(await screen.findByRole('button', { name: /Mở A4 ngày/ }))
+    const picker = document.querySelector(`[data-picker-kind="${kind}"]`) as HTMLElement
+    const visible = picker.querySelector('[data-visible-row]') as HTMLElement
+    const measured = [...picker.querySelectorAll<HTMLElement>('[data-measure-id]')]
+    for (const button of measured) button.getBoundingClientRect = () => ({ width: 60 } as DOMRect)
+    Object.defineProperty(visible, 'clientWidth', { configurable: true, value: 100 })
+    fireEvent(window, new Event('resize'))
+    const source = visible.querySelector('[data-picker-item]') as HTMLElement
+    expect(source).not.toBeNull()
+    const id = source.dataset.pickerItem!
+    const trigger = picker.querySelector('[data-drawer-trigger]') as HTMLElement
+    HTMLElement.prototype.setPointerCapture = vi.fn()
+    document.elementFromPoint = vi.fn().mockReturnValue(trigger)
+    fireEvent.pointerDown(source, { pointerId: 1, button: 0, isPrimary: true, clientX: 0, clientY: 0 })
+    fireEvent.pointerMove(source, { pointerId: 1, button: 0, isPrimary: true, clientX: 30, clientY: 20 })
+    fireEvent.pointerUp(source, { pointerId: 1 })
+    expect([...visible.querySelectorAll<HTMLElement>('[data-picker-item]')].some((item) => item.dataset.pickerItem === id)).toBe(false)
+    await waitFor(async () => {
+      const quick = (await loadQuickSettings())!.value
+      expect(kind === 'group2' ? quick.hiddenGroup2Names : quick.hiddenSettingTypeIds).toContain(id)
+    }, { timeout: 3000 })
+    const drawerSource = [...picker.querySelectorAll<HTMLElement>('[data-drawer-body] [data-picker-item]')].find((item) => item.dataset.pickerItem === id)!
+    const target = visible.querySelector('[data-picker-item]') ?? visible
+    document.elementFromPoint = vi.fn().mockReturnValue(target)
+    fireEvent.pointerDown(drawerSource, { pointerId: 2, button: 0, isPrimary: true, clientX: 0, clientY: 0 })
+    fireEvent.pointerMove(drawerSource, { pointerId: 2, button: 0, isPrimary: true, clientX: 30, clientY: 20 })
+    fireEvent.pointerUp(drawerSource, { pointerId: 2 })
+    expect([...visible.querySelectorAll<HTMLElement>('[data-picker-item]')].some((item) => item.dataset.pickerItem === id)).toBe(true)
+    await waitFor(async () => {
+      const quick = (await loadQuickSettings())!.value
+      expect(kind === 'group2' ? quick.hiddenGroup2Names : quick.hiddenSettingTypeIds).not.toContain(id)
+    }, { timeout: 3000 })
   })
   it('applies enabled retention before showing the A4 archive and keeps current pages', async () => {
     const workspace = fixture()

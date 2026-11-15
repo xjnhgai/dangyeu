@@ -17,6 +17,8 @@ export interface GreetingSettingsV2 {
 
 export interface QuickSettingsV2 {
   schemaVersion: 1
+  hiddenGroup2Names?: string[]
+  hiddenSettingTypeIds?: string[]
   group2NameSuggestions: string[]
   settingTypes: SettingTypeDefinition[]
   greeting: GreetingSettingsV2
