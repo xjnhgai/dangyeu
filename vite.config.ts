@@ -15,7 +15,7 @@ export default defineConfig(({ command, isPreview }) => {
       // Người dùng sẽ được hỏi trước khi cập nhật.
       registerType: 'prompt',
 
-      includeAssets: ['icons/*.png', 'icons/*.svg', 'love/*.gif', 'love/*.png'],
+      includeAssets: ['icons/*.png', 'icons/*.svg', 'love/*.gif', 'love/*.png', 'fonts/*.woff'],
 
       manifest: {
         id: appBase,

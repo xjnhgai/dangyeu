@@ -3,7 +3,7 @@ import { useRegisterSW } from 'virtual:pwa-register/react'
 
 import DrawerPicker from './components/DrawerPicker'
 import ResultsEditor from './components/ResultsEditor'
-import { loveIcon } from './core/love-icons'
+import { loveIcon, LOVE_ICON_EMOJIS } from './core/love-icons'
 import GreetingText from './components/GreetingText'
 import AppIcon from './components/AppIcon'
 import { clampPaperZoom } from './core/paper-zoom'
@@ -296,6 +296,7 @@ function App() {
   const [greetingFontFamily, setGreetingFontFamily] = useState('Arial, Helvetica, sans-serif')
   const [greetingColor, setGreetingColor] = useState('#34475e')
   const greetingInputRef = useRef<HTMLInputElement | null>(null)
+  const typeNameInputRef = useRef<HTMLInputElement | null>(null)
 
   const [dateDraft, setDateDraft] = useState(todayInputValue())
   const [newGroupName, setNewGroupName] = useState('')
@@ -1439,12 +1440,16 @@ function App() {
   }
 
   function selectTypeForEditing(type: SettingTypeDefinition) {
-    if (type.id === editingTypeId || !persistEditingType()) return
-    setEditingTypeId(type.id)
-    setEditingTypeName(type.name)
-    setEditingTypeD(type.defaultCoefficientD ?? '')
-    setEditingTypeT(type.defaultCoefficientT ?? '')
-    setEditingTypeCoefficientsByCount(createCountCoefficientDraft(type))
+    if (type.id !== editingTypeId) {
+      if (!persistEditingType()) return
+      setEditingTypeId(type.id)
+      setEditingTypeName(type.name)
+      setEditingTypeD(type.defaultCoefficientD ?? '')
+      setEditingTypeT(type.defaultCoefficientT ?? '')
+      setEditingTypeCoefficientsByCount(createCountCoefficientDraft(type))
+    }
+    typeNameInputRef.current?.focus({ preventScroll: true })
+    requestAnimationFrame(() => { const input = typeNameInputRef.current; if (input) input.setSelectionRange(input.value.length, input.value.length) })
   }
 
   function updateCountCoefficient(key: ListingCountKey, field: 'coefficientD' | 'coefficientT', value: string) {
@@ -1586,11 +1591,8 @@ function App() {
             >
               <AppIcon name="settings" />
             </button>
-            <div className="home-greeting" style={{ fontSize: `${greetingFontSize}px`, fontFamily: greetingFontFamily, color: greetingColor }}>
+            <div className="home-greeting" style={{ fontSize: `${greetingFontSize}px`, fontFamily: greetingFontFamily, color: greetingColor, fontWeight: greetingFontFamily.startsWith("'DG ") ? 400 : undefined }}>
               <GreetingText text={greeting} animatedIcons={animatedGreetingIcons} />
-            </div>
-            <div className="home-actions">
-              <button className="button-primary create-a4-button" type="button" onClick={createTodayA4} aria-label="Tạo A4 mới"><AppIcon name="plus" /></button>
             </div>
           </div>
           {storageError && <div className="storage-global-error" role="status">{storageError}</div>}
@@ -1635,7 +1637,7 @@ function App() {
 
                 {homeSettingsSection === 'greeting' && (
                   <div className="sheet-content compact-form home-settings-detail greeting-settings-detail">
-                    <div className="greeting-preview-card"><span className="preview-caption"><AppIcon name="sparkles" /> Xem trước</span><div className="greeting-preview" style={{ fontSize: `${greetingFontSize}px`, fontFamily: greetingFontFamily, color: greetingColor }}><GreetingText text={greeting || 'Lời chào của bạn'} animatedIcons={animatedGreetingIcons} /></div></div>
+                    <div className="greeting-preview-card"><span className="preview-caption"><AppIcon name="sparkles" /> Xem trước</span><div className="greeting-preview" style={{ fontSize: `${greetingFontSize}px`, fontFamily: greetingFontFamily, color: greetingColor, fontWeight: greetingFontFamily.startsWith("'DG ") ? 400 : undefined }}><GreetingText text={greeting || 'Lời chào của bạn'} animatedIcons={animatedGreetingIcons} /></div></div>
                     <label>Nội dung lời chào<input ref={greetingInputRef} value={greeting} onChange={(event) => setGreeting(event.target.value)} /></label>
                     <div className="greeting-style-fields">
                       <label>Cỡ chữ<select value={greetingFontSize} onChange={(event) => setGreetingFontSize(event.target.value)}><option value="14">14 px</option><option value="16">16 px</option><option value="18">18 px</option><option value="20">20 px</option><option value="22">22 px</option><option value="24">24 px</option><option value="28">28 px</option>{[32, 36, 40, 48, 56, 64].map((size) => <option key={size} value={size}>{size} px</option>)}</select></label>
@@ -1649,7 +1651,17 @@ function App() {
                             <option value="'Times New Roman', serif">Times New Roman</option>
                             <option value="Verdana, sans-serif">Verdana</option>
                           </optgroup>
-                          <optgroup label="Calligraphy & Swash">
+                          <optgroup label="Script & Calligraphy">
+                            <option value="'DG Great Vibes', cursive">Great Vibes — nét thanh đậm</option>
+                            <option value="'DG Alex Brush', cursive">Alex Brush — thư pháp bay bổng</option>
+                          </optgroup>
+                          <optgroup label="Signature">
+                            <option value="'DG Allura', cursive">Allura — chữ ký phóng khoáng</option>
+                          </optgroup>
+                          <optgroup label="Serif cách điệu">
+                            <option value="'DG Cormorant', serif">Cormorant Garamond — nghiêng sang trọng</option>
+                          </optgroup>
+                          <optgroup label="Kiểu chữ trên thiết bị">
                             <option value="'Snell Roundhand', 'Segoe Script', cursive">Calligraphy thanh lịch</option>
                             <option value="'Apple Chancery', 'Monotype Corsiva', cursive">Chancery Swash</option>
                             <option value="Zapfino, Gabriola, cursive">Swash bay bướm</option>
@@ -1680,8 +1692,8 @@ function App() {
                         ))}
                       </div>
                       <div className="greeting-motion-picker"><strong>Icon động</strong><div className="greeting-motion-options">
-                        {['🐻', '🐰', '💖'].map((icon) => <button key={icon} type="button" aria-label={`Chèn icon động ${icon}`} onClick={() => { setAnimatedGreetingIcons((current) => [...new Set([...current, icon])]); insertGreetingIcon(icon) }}><img src={loveIcon(icon).gif} alt={icon} /></button>)}
-                      </div><button type="button" className="motion-toggle" aria-pressed={animatedGreetingIcons.length > 0} onClick={() => setAnimatedGreetingIcons((current) => current.length ? [] : ['🐻', '🐰', '💖'])}>Chuyển động <span>{animatedGreetingIcons.length ? 'Bật' : 'Tắt'}</span></button></div>
+                        {LOVE_ICON_EMOJIS.map((icon) => <button key={icon} type="button" aria-label={`Chèn icon động ${icon}`} onClick={() => { setAnimatedGreetingIcons((current) => [...new Set([...current, icon])]); insertGreetingIcon(icon) }}><img src={loveIcon(icon).gif} alt={icon} /></button>)}
+                      </div><button type="button" className="motion-toggle" aria-pressed={animatedGreetingIcons.length > 0} onClick={() => setAnimatedGreetingIcons((current) => current.length ? [] : [...LOVE_ICON_EMOJIS])}>Chuyển động <span>{animatedGreetingIcons.length ? 'Bật' : 'Tắt'}</span></button></div>
                     </div>
                     <div className="greeting-palette" role="group" aria-label="Màu lời chào nhanh">
                       {['#81536c', '#c76785', '#326b61', '#356787', '#a47434', '#333044'].map((color) => <button type="button" key={color} aria-label={`Màu ${color}`} aria-pressed={greetingColor === color} style={{ backgroundColor: color }} onClick={() => setGreetingColor(color)}><span>{greetingColor === color ? '✓' : ''}</span></button>)}
@@ -1696,10 +1708,12 @@ function App() {
             </div>
           )}
           <div className="library-heading"><h1>Trang của bạn</h1><span>{sortedDates.length} trang</span></div>
+          <div className="a4-library-grid">
+            <button className="new-page-card" type="button" onClick={createTodayA4} aria-label="Tạo A4 mới"><span className="new-page-icon"><AppIcon name="plus" /></span><span><strong>Tạo trang mới</strong><small>Bắt đầu một trang giấy</small></span><AppIcon name="chevron" /></button>
           {sortedDates.length === 0 ? (
-            <div className="empty-library"><AppIcon name="pages" /><strong>Chưa có A4</strong><span>Chạm dấu + để tạo trang đầu tiên</span></div>
+            <div className="empty-library"><AppIcon name="pages" /><strong>Chưa có A4</strong><span>Chọn Tạo trang mới để bắt đầu</span></div>
           ) : (
-            <div className="a4-library-grid">
+            <>
               {sortedDates.map((group1) => {
                 const typeNames = data.settingTypes
                   .filter((type) => group1.groups2.some((group2) => group2.groups3.some((group3) => group3.settingTypeId === type.id)))
@@ -1729,8 +1743,9 @@ function App() {
                   </article>
                 )
               })}
-            </div>
+            </>
           )}
+          </div>
         </section>
       ) : selectedGroup1 ? (
         <section className="page-screen">
@@ -1875,7 +1890,7 @@ function App() {
           )}
 
           {toolbarVisible && activePanel === 'edit' && managementPanel && (
-            <div className="management-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeManagementPanel() }}>
+            <div className={`management-modal-backdrop${managementPanel === 'types' ? ' is-type-manager' : ''}`} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeManagementPanel() }}>
               <section className={`management-modal management-${managementPanel}`} role="dialog" aria-modal="true" aria-label={managementPanel === 'date' ? 'Chỉnh sửa ngày' : managementPanel === 'groups' ? 'Xóa nhóm' : 'Cài đặt nhóm thiết lập'}>
                 <div className="sheet-header">
                   <div className="sheet-header-title-row">
@@ -1924,9 +1939,8 @@ function App() {
                   <div className="sheet-content compact-form">
                     {editingType && (
                       <div className="type-editor">
-                        <div className="settings-type-banner"><AppIcon name="settings" /><span>Nhóm thiết lập<strong>{editingType.name}</strong></span></div>
                         <div className="type-name-row">
-                          <input className="type-name-input" aria-label="Tên thiết lập" value={editingTypeName} onChange={(event) => setEditingTypeName(event.target.value)} />
+                          <input ref={typeNameInputRef} className="type-name-input" aria-label="Tên thiết lập" value={editingTypeName} onChange={(event) => setEditingTypeName(event.target.value)} />
                           <button
                             className="icon-button type-settings-button"
                             type="button"
@@ -1954,7 +1968,7 @@ function App() {
                             aria-label={`Kéo để sắp xếp ${type.name}`}
                             title="Kéo để sắp xếp"
                           ><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="6" r="1.4"/><circle cx="16" cy="6" r="1.4"/><circle cx="8" cy="12" r="1.4"/><circle cx="16" cy="12" r="1.4"/><circle cx="8" cy="18" r="1.4"/><circle cx="16" cy="18" r="1.4"/></svg></button>
-                          <button type="button" className={`catalog-type${editingTypeId === type.id ? ' is-active' : ''}`} onClick={() => selectTypeForEditing(type)}>{type.name}</button>
+                          <button type="button" className={`catalog-type${editingTypeId === type.id ? ' is-active' : ''}`} onPointerDown={(event) => event.preventDefault()} onClick={() => selectTypeForEditing(type)}>{type.name}</button>
                         </div>
                       ))}
                     </div>

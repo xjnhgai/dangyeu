@@ -424,11 +424,13 @@ describe('application integration', () => {
     fireEvent.change(input, { target: { value: 'Chào' } })
     input.setSelectionRange(4, 4)
     fireEvent.change(screen.getByLabelText('Cỡ chữ'), { target: { value: '48' } })
+    fireEvent.change(screen.getByLabelText('Font chữ'), { target: { value: "'DG Great Vibes', cursive" } })
     fireEvent.click(screen.getByRole('button', { name: 'Chèn icon động 💖' }))
     await waitFor(async () => {
       const greeting = (await loadQuickSettings())!.value.greeting
       expect(greeting.text).toBe('Chào💖')
       expect(greeting.fontSize).toBe('48')
+      expect(greeting.fontFamily).toBe("'DG Great Vibes', cursive")
       expect(greeting.animatedIcons).toEqual(['💖'])
     }, { timeout: 3000 })
     cleanup()
@@ -492,6 +494,49 @@ describe('application integration', () => {
       const quick = (await loadQuickSettings())!.value
       expect(kind === 'group2' ? quick.hiddenGroup2Names : quick.hiddenSettingTypeIds).not.toContain(id)
     }, { timeout: 3000 })
+  })
+  it('anchors pinch zoom under the finger midpoint, including two-finger panning', async () => {
+    await saveCalculationWorkspace(fixture())
+    await openApp()
+    fireEvent.click(await screen.findByRole('button', { name: /Mở A4 ngày/ }))
+    const viewport = document.querySelector('.a4-v2-scroll') as HTMLElement
+    const paper = document.querySelector('.a4-v2-page') as HTMLElement
+    paper.getBoundingClientRect = () => ({ left: -viewport.scrollLeft, top: -viewport.scrollTop } as DOMRect)
+    fireEvent.touchStart(viewport, { touches: [{ clientX: 100, clientY: 200 }, { clientX: 200, clientY: 200 }] })
+    fireEvent.touchMove(viewport, { touches: [{ clientX: 50, clientY: 200 }, { clientX: 250, clientY: 200 }] })
+    expect(paper.style.transform).toBe('scale(2)')
+    expect(viewport.scrollLeft).toBe(150)
+    expect(viewport.scrollTop).toBe(200)
+    fireEvent.touchMove(viewport, { touches: [{ clientX: 70, clientY: 220 }, { clientX: 270, clientY: 220 }] })
+    await waitFor(() => { expect(viewport.scrollLeft).toBe(130); expect(viewport.scrollTop).toBe(180) })
+  })
+  it('uses the visible paper viewport height without reserving extra page space below', async () => {
+    await saveCalculationWorkspace(fixture())
+    await openApp()
+    fireEvent.click(await screen.findByRole('button', { name: /Mở A4 ngày/ }))
+    const viewport = document.querySelector('.a4-v2-scroll') as HTMLElement
+    Object.defineProperty(viewport, 'clientHeight', { configurable: true, value: 300 })
+    fireEvent(window, new Event('resize'))
+    await waitFor(() => {
+      expect((document.querySelector('.a4-v2-page') as HTMLElement).style.minHeight).toBe('300px')
+      expect((document.querySelector('.a4-v2-zoom-frame') as HTMLElement).style.height).toBe('300px')
+    })
+  })
+  it('focuses the same rename input when switching setting names and saves the previous name', async () => {
+    await saveCalculationWorkspace(fixture())
+    await openApp()
+    fireEvent.click(await screen.findByRole('button', { name: /Mở A4 ngày/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sửa thiết lập' }))
+    const input = screen.getByLabelText('Tên thiết lập') as HTMLInputElement
+    fireEvent.click(screen.getByRole('button', { name: 'LA', exact: true }))
+    expect(document.activeElement).toBe(input)
+    expect(input.value).toBe('LA')
+    fireEvent.change(input, { target: { value: 'LA riêng' } })
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'LB', exact: true }))
+    fireEvent.click(screen.getByRole('button', { name: 'LB', exact: true }))
+    expect(document.activeElement).toBe(input)
+    expect(input.value).toBe('LB')
+    await waitFor(async () => expect((await loadCalculationWorkspace())!.value.data.settingTypes[1].name).toBe('LA riêng'), { timeout: 3000 })
   })
   it('applies enabled retention before showing the A4 archive and keeps current pages', async () => {
     const workspace = fixture()

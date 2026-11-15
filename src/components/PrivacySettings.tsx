@@ -49,8 +49,8 @@ export function PinSettings() {
   const pinInput = (value: string, change: (value: string) => void, label: string) => (
     <label>{label}<input type="text" inputMode="numeric" maxLength={4} value={value} onChange={(event) => change(event.target.value.replace(/\D/g, '').slice(0, 4))} autoComplete="off" /></label>
   )
-  return <form className="sheet-content compact-form home-settings-detail" onSubmit={(event: FormEvent) => { event.preventDefault(); void submit() }}>
-    <p className="management-hint">{preferences.pin ? 'PIN đang bật.' : 'PIN đang tắt.'} PIN khóa truy cập trên thiết bị này. PIN nhà phát hành vẫn mở được app.</p>
+  return <form className="sheet-content compact-form home-settings-detail pin-settings-detail" onSubmit={(event: FormEvent) => { event.preventDefault(); void submit() }}>
+    <p className="management-hint">{preferences.pin ? 'PIN đang bật.' : 'PIN đang tắt.'}</p>
     {preferences.pin && pinInput(current, setCurrent, 'PIN hiện tại')}
     {pinInput(next, setNext, preferences.pin ? 'PIN mới (4 số)' : 'Đặt PIN (4 số)')}
     {pinInput(confirm, setConfirm, 'Nhập lại PIN mới')}

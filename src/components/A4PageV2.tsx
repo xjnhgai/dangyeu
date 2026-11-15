@@ -29,8 +29,24 @@ export default function A4PageV2({ projection, summary, results, showCalculation
   const viewportRef = useRef<HTMLDivElement>(null)
   const zoomCallbackRef = useRef(onZoomChange)
   const currentZoomRef = useRef(safeZoom)
-  const [paperSize, setPaperSize] = useState(() => ({ width: Math.min(794, window.innerWidth), minHeight: window.innerHeight - 12 }))
+  const [paperSize, setPaperSize] = useState(() => ({ width: Math.min(794, window.innerWidth), minHeight: window.innerHeight - 61 }))
   const [pageHeight, setPageHeight] = useState(0)
+  const pendingAnchorRef = useRef<{ x: number; y: number; clientX: number; clientY: number; zoom: number } | null>(null)
+  const alignPinchRef = useRef<() => void>(() => {})
+  useLayoutEffect(() => {
+    const align = () => {
+      const anchor = pendingAnchorRef.current
+      const page = pageRef.current
+      const viewport = viewportRef.current
+      if (!anchor || !page || !viewport || anchor.zoom !== safeZoom) return
+      const rect = page.getBoundingClientRect()
+      viewport.scrollLeft += rect.left + anchor.x * safeZoom - anchor.clientX
+      viewport.scrollTop += rect.top + anchor.y * safeZoom - anchor.clientY
+      pendingAnchorRef.current = null
+    }
+    alignPinchRef.current = align
+    align()
+  }, [safeZoom])
 
   useLayoutEffect(() => {
     if (fitRequest > 0) {
@@ -50,6 +66,7 @@ export default function A4PageV2({ projection, summary, results, showCalculation
 
     let initialDistance = 0
     let initialZoom = currentZoomRef.current
+    let anchor = { x: 0, y: 0 }
 
     const distance = (touches: TouchList) => {
       const dx = touches[0]!.clientX - touches[1]!.clientX
@@ -62,6 +79,10 @@ export default function A4PageV2({ projection, summary, results, showCalculation
         event.preventDefault()
         initialDistance = distance(event.touches)
         initialZoom = currentZoomRef.current
+        const rect = pageRef.current?.getBoundingClientRect()
+        const midX = (event.touches[0]!.clientX + event.touches[1]!.clientX) / 2
+        const midY = (event.touches[0]!.clientY + event.touches[1]!.clientY) / 2
+        anchor = { x: (midX - (rect?.left ?? 0)) / initialZoom, y: (midY - (rect?.top ?? 0)) / initialZoom }
       }
     }
 
@@ -70,8 +91,10 @@ export default function A4PageV2({ projection, summary, results, showCalculation
         event.preventDefault()
         const ratio = distance(event.touches) / initialDistance
         const nextZoom = clampPaperZoom(initialZoom * ratio)
+        pendingAnchorRef.current = { ...anchor, clientX: (event.touches[0]!.clientX + event.touches[1]!.clientX) / 2, clientY: (event.touches[0]!.clientY + event.touches[1]!.clientY) / 2, zoom: nextZoom }
         currentZoomRef.current = nextZoom
         zoomCallbackRef.current?.(nextZoom)
+        requestAnimationFrame(() => alignPinchRef.current())
       }
     }
 
@@ -98,7 +121,8 @@ export default function A4PageV2({ projection, summary, results, showCalculation
     if (!page || !viewport) return
     const update = () => {
       const width = Math.min(794, viewport.clientWidth || window.innerWidth)
-      setPaperSize((current) => current.width === width ? current : { width, minHeight: window.innerHeight - 12 })
+      const minHeight = viewport.clientHeight || window.innerHeight - 61
+      setPaperSize((current) => current.width === width && current.minHeight === minHeight ? current : { width, minHeight })
       const height = Math.max(page.scrollHeight, page.offsetHeight, paperSize.minHeight)
       setPageHeight(height)
     }
