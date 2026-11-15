@@ -42,7 +42,7 @@ describe('V2 parsing', () => {
   it('requires exactly 26 values for a partially entered 1–7 draw', () => {
     expect(parseOneToSevenTextV2('')).toEqual([])
     const completeValues = Array.from({ length: 26 }, (_, index) => String(index).padStart(2, '0'))
-    const completeList = completeValues.map((value, index) => index % 3 === 0 ? ` ${value}  ` : index % 3 === 1 ? `,${value}, ` : value).join('')
+    const completeList = completeValues.map((value, index) => index % 3 === 0 ? ` ${value}  ` : index % 3 === 1 ? `, ${value}, ` : value).join('')
     expect(parseOneToSevenTextV2(completeList)).toHaveLength(26)
     const shortList = Array.from({ length: 25 }, (_, index) => String(index).padStart(2, '0')).join(', ')
     expect(() => parseOneToSevenTextV2(shortList)).toThrow(/đúng 26 số/i)

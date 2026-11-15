@@ -13,8 +13,8 @@ describe('result commands', () => {
     ['7', '31287348', '31 28 73 48'],
   ]
   for (const [group, digits, expected] of cases) {
-    it(`splits group ${group} with digit then comma`, () => {
-      for (const marker of [`${group},`]) {
+    it(`splits group ${group} with comma then digit`, () => {
+      for (const marker of [`,${group}`]) {
         const formatted = formatResultInput(`${marker}\t${digits}`)
         expect(formatted).toBe(`${marker}\t${expected}`)
         expect(formatResultInput(formatted)).toBe(formatted)
@@ -23,27 +23,30 @@ describe('result commands', () => {
     })
   }
   it('excludes commands from all 26 calculation values', () => {
-    const text = '1, 12345\n' + cases.slice(1).map(([group, digits]) => `${group}, ${digits}`).join('\n')
+    const text = ',1 12345\n' + cases.slice(1).map(([group, digits]) => `,${group} ${digits}`).join('\n')
     const numbers = parseOneToSevenTextV2(text)
     expect(numbers).toHaveLength(26)
     expect(numbers[0]).toBe('12345')
     expect(numbers.at(-1)).toBe('48')
   })
-  it('does not treat comma before digit as a command', () => {
-    expect(formatResultInput(',2 1131251790')).toBe(',2 1131251790')
-    expect(() => parseOneToSevenTextV2(',2 1131251790')).toThrow()
+  it('rejects reversed commands and every other number immediately after a comma', () => {
+    expect(formatResultInput('2, 1131251790')).toBe('2, 1131251790')
+    expect(() => parseOneToSevenTextV2('2, 1131251790')).toThrow()
+    for (const raw of [',0', ',8', ',9', ',12', ',70', '11,22', ',7 11,22', ',21131251790']) {
+      expect(() => resultNumbers(raw)).toThrow()
+      expect(formatResultInput(raw)).toBe(raw)
+    }
   })
-  it('preserves ordinary comma-separated lists and leading zeros', () => {
-    expect(resultNumbers('11,22,33,44,05')).toEqual(['11','22','33','44','05'])
-    expect(formatResultInput('11,22,33')).toBe('11,22,33')
+  it('allows comma-space separators while preserving leading zeros', () => {
+    expect(resultNumbers('11, 22, 33, 44, 05')).toEqual(['11','22','33','44','05'])
   })
   it('rejects incomplete groups without dropping any digits', () => {
-    expect(formatResultInput('4, 123456')).toBe('4, 1234 56')
-    expect(() => resultNumbers('4, 123456')).toThrow()
+    expect(formatResultInput(',4 123456')).toBe(',4 1234 56')
+    expect(() => resultNumbers(',4 123456')).toThrow()
   })
   it('supports sequential typing and switching commands', () => {
     let value = ''
-    for (const key of '2,1131251790\n7,31287348') value = formatResultInput(value + key)
-    expect(value).toBe('2, 11312 51790\n7, 31 28 73 48')
+    for (const key of ',21131251790\n,731287348') value = formatResultInput(value + key)
+    expect(value).toBe(',2 11312 51790\n,7 31 28 73 48')
   })
 })
