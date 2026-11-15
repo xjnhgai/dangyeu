@@ -1,6 +1,12 @@
 import type { ReactNode } from 'react'
 
 const paths: Record<string, ReactNode> = {
+  trash: <><path d="M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7"/></>,
+  list: <><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M8 8h8M8 12h8M8 16h5"/></>,
+  check: <path d="m5 12 4 4L19 6"/>,
+  user: <><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></>,
+  calendar: <><rect x="3" y="5" width="18" height="16" rx="4"/><path d="M7 3v4m10-4v4M3 10h18m-13 5h3m3 0h2"/></>,
+  calculator: <><rect x="5" y="2" width="14" height="20" rx="4"/><path d="M8 6h8M8 11h2m4 0h2m-8 4h2m4 0h2m-8 4h2m4 0h2"/></>,
   lock: <><rect x="5" y="10" width="14" height="11" rx="4"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></>,
   archive: <><rect x="4" y="8" width="16" height="13" rx="3"/><path d="M3 3h18v5H3zM10 12h4"/></>,
   settings: <><path d="M4 7h8m4 0h4M4 17h3m4 0h9"/><circle cx="14" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></>,

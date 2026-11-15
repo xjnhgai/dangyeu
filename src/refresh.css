@@ -98,3 +98,80 @@
  .greeting-icon-options { grid-template-columns: repeat(6, minmax(0, 1fr)); }
  .home-settings-detail { padding: 16px; }
 }
+
+/* Greeting ornaments stay smaller than text, including joined emoji sequences. */
+.greeting-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.greeting-text .greeting-emoji { display: inline-block; font-family: system-ui, sans-serif; font-size: .66em; line-height: 1.2; vertical-align: .03em; }
+.greeting-emoji.is-animated { animation: greeting-float 2.7s ease-in-out infinite; transform-origin: 50% 80%; }
+@keyframes greeting-float { 0%, 100% { transform: translateY(0) rotate(-7deg); } 50% { transform: translateY(-.15em) rotate(7deg) scale(1.06); } }
+.greeting-motion-picker { display: grid; gap: 10px; margin-top: 12px; }
+.greeting-motion-picker > strong { font-size: 12px; font-weight: 500; color: #8c7487; }
+.greeting-motion-options { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
+.greeting-motion-options button { display: grid; place-items: center; height: 40px; border: 1px solid #f0dfe9; background: #fff5fb; border-radius: 12px; font-size: 22px; }
+.motion-toggle { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border: 0; border-radius: 10px; background: #f7eff4; color: #9f7891; font-size: 12px; }
+.motion-toggle span { padding: 3px 9px; background: #eee0e9; border-radius: 10px; font-size: 10px; }
+.motion-toggle[aria-pressed=true] span { background: #a97796; color: #fff; }
+.a4-library-card { position: relative; cursor: pointer; }
+.a4-card-open::after { content: ''; position: absolute; inset: 0; z-index: 1; border-radius: 20px; }
+.library-card-title, .library-card-delete { position: relative; z-index: 2; }
+.a4-library-card:has(.a4-card-open:focus-visible) { outline: 2px solid #b78ba5; outline-offset: 3px; }
+
+/* Quiet close actions; touch targets remain generous. */
+.editor-sheet .sheet-close, .management-modal .sheet-close, .type-settings-window .sheet-close { border: 0; background: transparent; box-shadow: none; color: #b299ad; }
+.editor-sheet .sheet-close:hover, .management-modal .sheet-close:hover { color: #81536c; background: transparent; }
+.sheet-close svg { width: 20px; height: 20px; }
+.editor-sheet .sheet-header h2 { letter-spacing: -.3px; }
+.compact-date-row { padding: 10px 0 14px; border-bottom: 1px solid #f1e8ef; margin-bottom: 14px; }
+.compact-date-row strong { color: #815b77; font-weight: 600; letter-spacing: -.4px; }
+.trailing-edit-icon { color: #ac829d; background: #f8eef4; border-color: transparent; border-radius: 11px; }
+.trailing-edit-icon svg { width: 17px; height: 17px; }
+.editor-sheet .choice-chip { min-height: 36px; padding: 7px 13px; border-radius: 12px; border: 1px solid #ede1e9; background: #fffafd; color: #a28c9f; font-size: 12px; font-weight: 550; }
+.editor-sheet .choice-chip.is-selected { color: #fff; border-color: #ad7d9b; background: linear-gradient(130deg, #b98da8, #946c88); box-shadow: 0 3px 9px #946c881c; }
+.editor-sheet .choice-chip.is-configured { background: #f1f5f3; border-color: #dce7e1; color: #7c9d8d; }
+.editor-sheet .group2-add-trigger, .editor-sheet .type-overflow-trigger { display: inline-grid; place-items: center; width: 34px; min-width: 34px; padding: 0; background: #f7edf3; color: #a37292; }
+.group2-add-trigger svg { width: 19px; height: 19px; }
+.editor-sheet .chip-edit-button, .editor-sheet .group2-overflow-trigger { display: inline-grid; place-items: center; width: 34px; min-width: 34px; height: 36px; min-height: 36px; padding: 7px; border: 1px solid #ece1e9; border-radius: 11px; background: #fff9fc; color: #b28ba3; }
+.chip-edit-button svg, .group2-overflow-trigger svg { width: 18px; height: 18px; }
+.editor-sheet .type-overflow-menu, .editor-sheet .group2-overflow-menu { border-color: #eadce6; border-radius: 16px; background: #fffafd; box-shadow: 0 8px 25px #68435c10; padding: 10px; }
+.type-overflow-trigger[aria-expanded=true], .group2-overflow-trigger[aria-expanded=true] { background: #eee0e9; color: #94617f; }
+
+.panel-results .sheet-content { gap: 17px; padding: 20px; }
+.panel-results label { color: #9b7c92; font-size: 12px; gap: 8px; }
+.panel-results textarea, .panel-results input { border: 1px solid #e9dce5; background: #fffcfe; border-radius: 14px; padding: 12px; color: #6f5269; font-size: 18px; line-height: 1.6; }
+.panel-results .draw-count-status { display: flex; justify-content: space-between; align-items: center; margin-top: -11px; padding: 7px 4px; font-size: 10px; color: #ab94a4; }
+.panel-results .draw-count-status strong { padding: 3px 8px; border-radius: 8px; background: #eef5f0; color: #7a9b85; font-size: 10px; font-weight: 500; }
+.panel-results .draw-count-status.is-invalid strong { background: #fbf0f3; color: #b77e96; }
+.results-footer { padding-top: 5px; }
+.panel-results .calculation-toggle { display: flex; width: 100%; align-items: center; justify-content: flex-start; gap: 10px; min-height: 52px; padding: 12px 15px; border: 1px solid #e9dce5; border-radius: 15px; font-size: 14px; font-weight: 600; color: #a58b9e; background: #f7f0f5; box-shadow: none; }
+.calculation-toggle > svg { width: 22px; height: 22px; }
+.calculation-status { margin-left: auto; padding: 4px 10px; border-radius: 9px; background: #eaddE7; font-size: 10px; }
+.panel-results .calculation-toggle.is-on { background: linear-gradient(110deg, #b78aa5, #8e6583); border-color: #a57a96; color: #fff; box-shadow: 0 5px 15px #94617f20; }
+.calculation-toggle.is-on .calculation-status { background: #ffffff26; }
+.panel-view .view-options { display: flex; flex-direction: column; gap: 8px; padding: 18px; }
+.panel-view .view-option { display: flex; min-height: 50px; align-items: center; gap: 12px; padding: 11px 14px; border: 1px solid #eee3eb; border-radius: 14px; background: #fffafd; color: #ac8fa4; text-align: left; }
+.view-option > svg { width: 19px; height: 19px; flex-shrink: 0; }
+.view-option > span { flex: 1; overflow-wrap: anywhere; }
+.view-option > svg:last-child { visibility: hidden; width: 15px; }
+.panel-view .view-option.is-active { border-color: #d9b5cb; background: #f8eaf2; color: #9f6a8b; }
+.view-option.is-active > svg:last-child { visibility: visible; }
+
+.date-edit-banner { display: flex; align-items: center; gap: 14px; padding: 18px; border-radius: 16px; background: #f9eff5; color: #b690a8; }
+.date-edit-banner > svg { width: 34px; height: 34px; }
+.date-edit-banner > span { display: grid; gap: 5px; font-size: 11px; }
+.date-edit-banner strong { color: #9c6b8a; font-weight: 600; font-size: 18px; letter-spacing: -.4px; }
+.management-date .compact-form { display: flex; flex-direction: column; padding: 20px; gap: 20px; }
+.management-date .date-apply { min-height: 44px; border-radius: 12px; }
+.date-apply svg { width: 17px; height: 17px; }
+.management-groups .quick-group-management-item { display: flex; gap: 12px; padding: 12px; border: 1px solid #eee3eb; border-radius: 14px; background: #fffafd; margin-bottom: 8px; }
+.management-groups .quick-group-management-item > span { color: #9b7891; font-size: 14px; }
+.management-groups .danger-icon, .deletion-row .danger-icon { display: grid; place-items: center; width: 35px; height: 35px; border: 0; background: #f9eaf0; color: #bf8b9f; border-radius: 11px; }
+.management-groups .danger-icon:disabled, .deletion-row .danger-icon:disabled { background: #f5f0f3; color: #cdbdc7; opacity: .65; }
+.management-groups .danger-icon svg, .deletion-row .danger-icon svg { width: 18px; height: 18px; }
+.deletion-list { display: flex; flex-direction: column; gap: 9px; padding: 18px; }
+.deletion-row { display: flex; align-items: center; gap: 12px; padding: 12px; background: #fffafd; border: 1px solid #eee3eb; border-radius: 14px; }
+.deletion-badge { display: grid; place-items: center; width: 36px; height: 39px; border-radius: 11px; background: #f6eaf2; color: #bd96ad; }
+.deletion-badge svg { width: 20px; height: 20px; }
+.deletion-row > span:nth-child(2) { display: grid; gap: 5px; flex: 1; }
+.deletion-row strong { font-size: 13px; font-weight: 600; color: #9f7b94; }
+.deletion-row small { color: #bea7b7; font-size: 10px; }
+@media (prefers-reduced-motion: reduce) { .greeting-emoji.is-animated { animation: none; } }
