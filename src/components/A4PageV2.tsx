@@ -18,10 +18,11 @@ interface A4PageV2Props {
   zoom?: number
   onZoomChange?: (nextZoom: number) => void
   centerInViewport?: boolean
+  onBack?: () => void
   fitRequest?: number
 }
 
-export default function A4PageV2({ projection, summary, results, showCalculation = true, zoom = 1, onZoomChange, centerInViewport = false, fitRequest = 0 }: A4PageV2Props) {
+export default function A4PageV2({ projection, summary, results, showCalculation = true, zoom = 1, onZoomChange, centerInViewport = false, fitRequest = 0, onBack }: A4PageV2Props) {
   const safeZoom = Math.max(0.03, Math.min(1, zoom))
   const pageRef = useRef<HTMLElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
@@ -29,11 +30,12 @@ export default function A4PageV2({ projection, summary, results, showCalculation
   const currentZoomRef = useRef(safeZoom)
   const [paperSize, setPaperSize] = useState(() => ({ width: Math.min(794, window.innerWidth), minHeight: window.innerHeight - 12 }))
   const [pageHeight, setPageHeight] = useState(0)
-  const autoFitRef = useRef(false)
 
   useLayoutEffect(() => {
-    autoFitRef.current = fitRequest > 0
-    if (fitRequest > 0 && viewportRef.current) { viewportRef.current.scrollTop = 0; viewportRef.current.scrollLeft = 0 }
+    if (fitRequest > 0) {
+      currentZoomRef.current = 1
+      zoomCallbackRef.current?.(1)
+    }
   }, [fitRequest])
 
   useEffect(() => {
@@ -56,7 +58,7 @@ export default function A4PageV2({ projection, summary, results, showCalculation
 
     const handleTouchStart = (event: TouchEvent) => {
       if (event.touches.length === 2) {
-        autoFitRef.current = false
+        event.preventDefault()
         initialDistance = distance(event.touches)
         initialZoom = currentZoomRef.current
       }
@@ -67,6 +69,7 @@ export default function A4PageV2({ projection, summary, results, showCalculation
         event.preventDefault()
         const ratio = distance(event.touches) / initialDistance
         const nextZoom = Math.max(0.03, Math.min(1, initialZoom * ratio))
+        currentZoomRef.current = nextZoom
         zoomCallbackRef.current?.(nextZoom)
       }
     }
@@ -75,7 +78,7 @@ export default function A4PageV2({ projection, summary, results, showCalculation
       initialDistance = 0
     }
 
-    viewport.addEventListener('touchstart', handleTouchStart, { passive: true })
+    viewport.addEventListener('touchstart', handleTouchStart, { passive: false })
     viewport.addEventListener('touchmove', handleTouchMove, { passive: false })
     viewport.addEventListener('touchend', handleTouchEnd, { passive: true })
     viewport.addEventListener('touchcancel', handleTouchEnd, { passive: true })
@@ -97,9 +100,6 @@ export default function A4PageV2({ projection, summary, results, showCalculation
       setPaperSize((current) => current.width === width ? current : { width, minHeight: window.innerHeight - 12 })
       const height = Math.max(page.scrollHeight, page.offsetHeight, paperSize.minHeight)
       setPageHeight(height)
-      if (autoFitRef.current) {
-        zoomCallbackRef.current?.(1)
-      }
     }
     update()
     window.visualViewport?.addEventListener('resize', update)
@@ -123,6 +123,7 @@ export default function A4PageV2({ projection, summary, results, showCalculation
           className="a4-v2-page"
           style={{ width: `${paperSize.width}px`, minHeight: `${paperSize.minHeight}px`, transform: `scale(${safeZoom})` }}
         >
+          {onBack && <button type="button" className="paper-back" onClick={onBack} aria-label="Quay lại">←</button>}
           <header className="a4-v2-header">
             <h1>{projection.group1.dateLabel}</h1>
             {projection.mode === 'group2' && projection.group2 && (

@@ -234,3 +234,8 @@
 
 /* A tall sheet must start at the top even while the keyboard reduces the viewport. */
 .app-shell-page .a4-v2-scroll.is-fit-page { align-items: flex-start; }
+
+.paper-back { display: none; }
+@media (max-width: 760px) {
+ .paper-back { display: grid; place-items: center; position: absolute; top: 5px; left: 5px; z-index: 2; width: 30px; height: 30px; padding: 0; border: 0; background: transparent; color: #34465b; font-size: 27px; line-height: 1; }
+}

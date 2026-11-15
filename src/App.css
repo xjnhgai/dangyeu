@@ -2198,3 +2198,16 @@ body:has(.app-shell-page) { position: fixed; inset: 0; width: 100%; overflow: hi
 .app-shell-page.is-entry-docked .document-stage { top: calc(var(--visual-top, 0px) + 44px); height: max(40px, calc(var(--visible-height, 100dvh) - var(--entry-dock-height, 140px) - 56px)); }
 .app-shell-page.is-entry-docked .document-paper-wrap { height: 100%; }
 .entry-dock-heading { justify-content: space-between; }
+
+/* Paper begins at the viewport edge; the back button belongs to the sheet. */
+.app-shell-page .document-stage { padding: 0; }
+.app-shell-page .a4-v2-scroll { padding-top: 0; }
+.app-shell-page .document-stage { top: var(--visual-top, 0px); height: calc(var(--visible-height, 100dvh) - 61px - env(safe-area-inset-bottom)); }
+.app-shell-page.is-entry-docked .document-stage { top: var(--visual-top, 0px); height: max(40px, calc(var(--visible-height, 100dvh) - var(--entry-dock-height, 360px) - 6px)); }
+.app-shell-page .document-stage, .app-shell-page .document-paper-wrap, .app-shell-page .a4-v2-scroll { scroll-behavior: auto; transition: none; animation: none; }
+.entry-dock { max-height: calc(var(--visible-height, 100dvh) - 48px); overflow-y: auto; border-radius: 16px 16px 0 0; padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+.entry-keypad { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin-top: 8px; touch-action: manipulation; }
+.entry-keypad button { height: clamp(34px, 6dvh, 52px); padding: 0; border: 0; border-radius: 9px; background: #e7dce5; color: #332837; font: inherit; font-size: 25px; user-select: none; touch-action: manipulation; }
+.entry-keypad button:active { background: #cba8c0; }
+.entry-keypad button:disabled { opacity: .35; }
+.entry-dock-fields :focus { outline: 2px solid #a4537c; outline-offset: 1px; }

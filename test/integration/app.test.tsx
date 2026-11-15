@@ -136,7 +136,7 @@ describe('application integration', () => {
       expect(saved.editorState.selectedGroup2Id).toBe('lan')
     }, { timeout: 3000 })
   })
-  it('keeps A4 visible in dock mode, previews input, and moves Enter to Point before saving', async () => {
+  it('keeps A4 visible in dock mode, previews input, and saves through the Point field', async () => {
     await saveCalculationWorkspace(fixture())
     await openApp()
     fireEvent.click(await screen.findByRole('button', { name: /Mở A4 ngày/ }))
@@ -343,6 +343,63 @@ describe('application integration', () => {
     expect(confirm).toHaveBeenCalled()
     expect(screen.getByLabelText('Liệt kê đang nhập')).toBeDefined()
     expect((await loadCalculationWorkspace())?.value.data.groups1[0].groups2[0].groups3[0].listing).toBe('00')
+  })
+  it('keeps zoom and scroll when changing dock fields and pinches in the expected direction', async () => {
+    await saveCalculationWorkspace(fixture())
+    await openApp()
+    fireEvent.click(await screen.findByRole('button', { name: /Mở A4 ngày/ }))
+    fireEvent.focus(screen.getByLabelText('Liệt kê'))
+    const paper = document.querySelector('.a4-v2-page') as HTMLElement
+    const viewport = document.querySelector('.a4-v2-scroll') as HTMLElement
+    const touches = (width: number) => [{ clientX: 0, clientY: 0 }, { clientX: width, clientY: 0 }]
+    fireEvent.touchStart(viewport, { touches: touches(100) })
+    fireEvent.touchMove(viewport, { touches: touches(50) })
+    expect(paper.style.transform).toBe('scale(0.5)')
+    fireEvent.touchMove(viewport, { touches: touches(200) })
+    expect(paper.style.transform).toBe('scale(1)')
+    fireEvent.touchEnd(viewport, { touches: [] })
+    fireEvent.touchStart(viewport, { touches: touches(100) })
+    fireEvent.touchMove(viewport, { touches: touches(50) })
+    fireEvent.touchEnd(viewport, { touches: [] })
+    viewport.scrollTop = 80
+    fireEvent.focus(screen.getByLabelText('Điểm đang nhập'))
+    fireEvent.pointerDown(screen.getByLabelText('Liệt kê đang nhập'))
+    fireEvent.focus(screen.getByLabelText('Liệt kê đang nhập'))
+    fireEvent(window, new Event('resize'))
+    expect(paper.style.transform).toBe('scale(0.5)')
+    expect(viewport.scrollTop).toBe(80)
+    expect(paper.querySelector('.paper-back')).not.toBeNull()
+    expect(document.querySelector('.mobile-page-controls')).toBeNull()
+  })
+  it('uses the custom keypad with delete left, comma right and independent point input', async () => {
+    await saveCalculationWorkspace(fixture())
+    await openApp()
+    fireEvent.click(await screen.findByRole('button', { name: /Mở A4 ngày/ }))
+    fireEvent.focus(screen.getByLabelText('Liệt kê'))
+    const input = screen.getByLabelText('Liệt kê đang nhập') as HTMLTextAreaElement
+    const point = screen.getByLabelText('Điểm đang nhập') as HTMLInputElement
+    expect(input.readOnly).toBe(true)
+    expect(input.inputMode).toBe('none')
+    expect(point.readOnly).toBe(true)
+    const keypad = screen.getByRole('group', { name: 'Bàn phím số' })
+    const keys = [...keypad.querySelectorAll('button')]
+    expect(keys.slice(-3).map((button) => button.textContent)).toEqual(['⌫', '0', ','])
+    fireEvent.click(screen.getByRole('button', { name: 'Xóa một ký tự' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Xóa một ký tự' }))
+    for (const key of ['1', '2', ',', '3', '4']) fireEvent.click(screen.getByRole('button', { name: key === ',' ? 'Dấu phẩy' : `Nhập ${key}` }))
+    expect(input.value).toBe('12,34')
+    fireEvent.focus(point)
+    expect((screen.getByRole('button', { name: 'Dấu phẩy' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Xóa một ký tự' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Nhập 4' }))
+    expect(point.value).toBe('4')
+    expect(input.value).toBe('12,34')
+    fireEvent.keyDown(point, { key: 'Enter' })
+    await waitFor(async () => {
+      const row = (await loadCalculationWorkspace())!.value.data.groups1[0].groups2[0].groups3[0]
+      expect(row.listing).toBe('12, 34')
+      expect(row.point).toBe('4')
+    })
   })
   it('applies enabled retention before showing the A4 archive and keeps current pages', async () => {
     const workspace = fixture()

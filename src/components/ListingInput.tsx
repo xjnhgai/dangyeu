@@ -29,7 +29,7 @@ export default function ListingInput({ value, onChange, onBlur, onFocus, label, 
   }, [value])
   return <textarea
     ref={localRef}
-    className="listing-input" rows={1} value={value} inputMode="decimal" autoComplete="off" autoCorrect="off" spellCheck={false}
+    className="listing-input" rows={1} value={value} readOnly={Boolean(onFocus)} inputMode={onFocus ? "none" : "decimal"} autoComplete="off" autoCorrect="off" spellCheck={false}
     onChange={(event) => onChange(cleanListingInput(event.target.value))} onBlur={onBlur} onFocus={onFocus} aria-label={label}
   />
 }

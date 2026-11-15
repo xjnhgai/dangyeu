@@ -1823,7 +1823,7 @@ function App() {
   function openEntryDock(mode: 'saved' | 'draft', rowId: string, typeId: string, field: 'listing' | 'point' = 'listing') {
     if (!selectedGroup1 || !selectedGroup2) return
     clearFeedback()
-    setPaperFitRequest((value) => value + 1)
+    if (!entryDock) setPaperFitRequest((value) => value + 1)
     setEntryDock({ mode, rowId, typeId, group1Id: selectedGroup1.id, group2Id: selectedGroup2.id, field })
   }
 
@@ -1858,12 +1858,7 @@ function App() {
           <header className="app-header page-desktop-header">
             <button className="back-link" type="button" onClick={handlePageBack} aria-label="Quay lại">←</button>
           </header>
-          <nav className="mobile-page-controls" aria-label="Điều khiển trang A4">
-            <button className="mobile-page-control mobile-back-control" type="button" onClick={handlePageBack} aria-label="Quay lại">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m0 0 6-6m-6 6 6 6" /></svg>
-            </button>
 
-          </nav>
         </>
       )}
 
@@ -2040,6 +2035,7 @@ function App() {
                 <A4PageV2
                   projection={projectionState.projection}
                   fitRequest={paperFitRequest}
+                  onBack={handlePageBack}
                   centerInViewport={pageFitMode === 'page'}
                   summary={entryDock ? undefined : calculationState.workspace?.summary}
                   results={entryDock ? EMPTY_RESULTS : calculationState.workspace?.settingResults ?? EMPTY_RESULTS}
@@ -2125,7 +2121,7 @@ function App() {
                               >
                                 <div className="setting-line">
                                 <ListingInput onFocus={() => openEntryDock('saved', group3.id, activeSettingType.id)} value={currentDraft.listing} onChange={(value) => updateSavedGroup3(group3, 'listing', value)} onBlur={() => { try { const savedType = data.settingTypes.find((item) => item.id === group3.settingTypeId); updateSavedGroup3(group3, 'listing', parseSettingNumberListV2(currentDraft.listing, savedType?.formulaId).join(', ')) } catch { /* Keep invalid input visible. */ } }} label="Liệt kê" />
-                                  <input onFocus={() => openEntryDock('saved', group3.id, activeSettingType.id, 'point')} className="point-input" value={currentDraft.point} onChange={(event) => updateSavedGroup3(group3, 'point', event.target.value)} placeholder="Điểm" aria-label="Điểm" inputMode="numeric" />
+                                  <input onFocus={() => openEntryDock('saved', group3.id, activeSettingType.id, 'point')} className="point-input" readOnly value={currentDraft.point} onChange={(event) => updateSavedGroup3(group3, 'point', event.target.value)} placeholder="Điểm" aria-label="Điểm" inputMode="numeric" />
                                   <button className="icon-button danger-icon" type="button" onClick={() => removeGroup3(group3.id)} aria-label="Xóa thiết lập">×</button>
                                 </div>
                               </div>
@@ -2137,7 +2133,7 @@ function App() {
                               <div className="setting-line draft-setting-line">
                                 <ListingInput onFocus={() => openEntryDock('draft', row.id, activeSettingType.id)} inputRef={draftListingInputRef} value={row.listing} onChange={(value) => updateDraftField(activeSettingType.id, row.id, 'listing', value)} onBlur={() => normalizeDraftListing(activeSettingType.id, row.id, row.listing)} label="Danh sách thiết lập" />
                                 <span className="point-label">Điểm</span>
-                                <input onFocus={() => openEntryDock('draft', row.id, activeSettingType.id, 'point')} className="point-input" value={row.point} onChange={(event) => updateDraftField(activeSettingType.id, row.id, 'point', event.target.value)} aria-label="Điểm" inputMode="numeric" />
+                                <input onFocus={() => openEntryDock('draft', row.id, activeSettingType.id, 'point')} className="point-input" readOnly value={row.point} onChange={(event) => updateDraftField(activeSettingType.id, row.id, 'point', event.target.value)} aria-label="Điểm" inputMode="numeric" />
                                 <button className="button-primary add-setting-button" type="button" onClick={() => commitDraftRow(activeSettingType.id, row.id)}>Thêm</button>
                               </div>
                             </div>
@@ -2347,7 +2343,7 @@ function App() {
       )}
 
       {entryDock && entryDockRow && entryDockType && screen === 'page' && <EntryDock
-        onListingTap={() => setPaperFitRequest((value) => value + 1)} formulaId={entryDockType.formulaId} rowId={entryDock.rowId} initialField={entryDock.field}
+        formulaId={entryDockType.formulaId} rowId={entryDock.rowId} initialField={entryDock.field}
         title={`${entryDockGroup?.name ?? ''} · ${entryDockType.name}`}
         listing={entryDockRow.listing} point={entryDockRow.point} saved={entryDock.mode === 'saved'}
         onListing={(value) => updateEntryDock('listing', value)} onPoint={(value) => updateEntryDock('point', value)}
