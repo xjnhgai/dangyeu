@@ -93,11 +93,9 @@ export function RetentionSettings({ data }: { data: CalculationDataV2 }) {
   return <form className="sheet-content compact-form home-settings-detail storage-settings-detail" onSubmit={(event) => void save(event)}>
     <label className="retention-toggle"><input type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />Tự xóa A4 hết hạn</label>
     <label>Số ngày giữ lại<input type="number" inputMode="numeric" min="1" max="3650" step="1" value={days} onChange={(event) => setDays(event.target.value)} /></label>
-    <p className="management-hint">Tính theo ngày ghi trên A4, gồm hôm nay. Ví dụ giữ 13 ngày thì giữ hôm nay và 12 ngày trước. Chỉ xóa khi ứng dụng đang hoạt động; lần mở tiếp theo sẽ dọn dữ liệu hết hạn. Tên nhóm nhập nhanh và hệ số được giữ lại.</p>
-    <p className="retention-preview">{enabled ? `Có ${count} A4 hết hạn theo lựa chọn này.` : 'Tự xóa đang tắt.'}</p>
     {error && <p className="settings-error" role="alert">{error}</p>}
     {message && <p className="settings-success" role="status">{message}</p>}
     <button className="button-primary" type="submit" disabled={busy}>{busy ? 'Đang lưu…' : 'Áp dụng'}</button>
-    <section className="manual-calculation-save"><strong>Lưu trữ dữ liệu A4</strong><p>A4 và nội dung nhập dở được tự lưu trên thiết bị. Nút Lưu trên thanh công cụ dùng để xuất ảnh JPG.</p></section>
+
   </form>
 }

@@ -4,6 +4,7 @@ import type { A4SummaryV2 } from '../core/summary-v2'
 import type { SettingCalculationResult } from '../core/calculation'
 import { splitSeparatedValuesV2 } from '../core/workspace-calculator-v2'
 import '../styles/A4PageV2.css'
+import { clampPaperZoom } from '../core/paper-zoom'
 
 function formatAmount(value: number | null): string {
   if (value === null) return '—'
@@ -23,7 +24,7 @@ interface A4PageV2Props {
 }
 
 export default function A4PageV2({ projection, summary, results, showCalculation = true, zoom = 1, onZoomChange, centerInViewport = false, fitRequest = 0, onBack }: A4PageV2Props) {
-  const safeZoom = Math.max(0.03, Math.min(1, zoom))
+  const safeZoom = clampPaperZoom(zoom)
   const pageRef = useRef<HTMLElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
   const zoomCallbackRef = useRef(onZoomChange)
@@ -68,7 +69,7 @@ export default function A4PageV2({ projection, summary, results, showCalculation
       if (event.touches.length === 2 && initialDistance > 0) {
         event.preventDefault()
         const ratio = distance(event.touches) / initialDistance
-        const nextZoom = Math.max(0.03, Math.min(1, initialZoom * ratio))
+        const nextZoom = clampPaperZoom(initialZoom * ratio)
         currentZoomRef.current = nextZoom
         zoomCallbackRef.current?.(nextZoom)
       }
@@ -110,7 +111,7 @@ export default function A4PageV2({ projection, summary, results, showCalculation
   }, [projection, summary, showCalculation, fitRequest, paperSize])
 
   return (
-    <div className={`a4-v2-scroll${centerInViewport ? ' is-fit-page' : ''}`} ref={viewportRef}>
+    <div className={`a4-v2-scroll${centerInViewport && safeZoom === 1 ? ' is-fit-page' : ''}`} ref={viewportRef}>
       <div
         className="a4-v2-zoom-frame"
         style={{

@@ -1,0 +1,100 @@
+/* Interface surfaces only. The paper typography and entry dock keep their layout. */
+.app-shell { --accent: #82546e; --accent-soft: #f4e9ef; --ui-ink: #352b38; --ui-muted: #887b8b; }
+.app-shell:not(.app-shell-page) { background: #faf7f9; padding: max(20px, env(safe-area-inset-top)) 18px 36px; }
+.home-screen { max-width: 760px; }
+.home-heading { display: grid; grid-template-columns: 46px minmax(0, 1fr) 46px; gap: 12px; margin: 4px 0 38px; align-items: center; }
+.home-greeting { justify-content: center; text-align: center; line-height: 1.45; font-weight: 600; }
+.home-actions { display: contents; }
+.home-settings-button, .create-a4-button { display: grid; place-items: center; width: 46px; height: 46px; min-height: 46px; padding: 0; border: 1px solid #eadfe7; border-radius: 16px; }
+.home-settings-button { color: #77566f; background: #fff; box-shadow: 0 3px 12px #63405a05; }
+.home-settings-button svg, .create-a4-button svg { width: 23px; height: 23px; }
+.create-a4-button { border-color: transparent; background: linear-gradient(145deg, #aa7595, #82546e); box-shadow: 0 5px 15px #82546e26; }
+.create-a4-button:hover { background: #82546e; }
+.library-heading { display: flex; justify-content: space-between; align-items: center; margin: 0 2px 15px; }
+.library-heading h1 { margin: 0; font-size: 19px; letter-spacing: -.5px; font-weight: 650; color: #352b38; }
+.library-heading > span { border: 1px solid #eadfe7; padding: 5px 10px; border-radius: 20px; font-size: 11px; color: #887b8b; background: #fff; }
+.a4-library-grid { display: flex; flex-direction: column; gap: 12px; }
+.a4-library-card { display: grid; grid-template-columns: 62px minmax(0, 1fr); column-gap: 15px; row-gap: 0; padding: 15px; border: 1px solid #eee5ec; border-radius: 20px; background: #fff; box-shadow: 0 4px 16px #4a274a04; }
+.a4-library-card:hover { transform: none; border-color: #d7bdcd; box-shadow: 0 5px 20px #82546e0b; }
+.a4-card-open { grid-row: 1 / 3; justify-content: center; align-self: stretch; }
+.home-screen .mini-a4-paper { display: grid; place-items: center; width: 60px; height: 72px; padding: 13px; aspect-ratio: auto; border: 1px solid #f0e0e9; border-radius: 14px; background: linear-gradient(145deg, #fcf5f8, #f3e9f1); box-shadow: none; color: #b18a9f; }
+.home-screen .mini-a4-paper > svg { width: 29px; height: 29px; }
+.home-screen .mini-a4-title, .home-screen .mini-a4-lines { display: none; }
+.library-card-footer { min-height: 30px; gap: 8px; padding: 0; }
+.library-card-title { color: #3c3040; font-size: 15px; font-weight: 650; letter-spacing: -.25px; }
+.library-card-delete { width: 32px; height: 32px; border: 0; border-radius: 10px; background: #faf4f7; color: #b58a9e; }
+.library-card-delete:hover { color: #a74365; background: #f9eaf0; }
+.library-card-delete svg { width: 17px; height: 17px; }
+.library-card-calculation { display: flex; align-items: center; gap: 12px; padding: 6px 0 0; font-size: 11px; color: #998a9b; }
+.library-card-calculation b { margin-left: 3px; font-weight: 600; color: #6a5a70; }
+.library-card-calculation > strong { margin-left: auto; padding: 4px 8px; border-radius: 7px; background: #f2f5f2; color: #608473; font-size: 12px; font-weight: 650; }
+.library-card-calculation > strong.is-negative { color: #ac6c84; background: #fbf0f4; }
+.empty-library { display: flex; min-height: 330px; gap: 10px; flex-direction: column; align-items: center; justify-content: center; border: 1px dashed #e7d9e3; border-radius: 24px; background: #ffffff70; color: #9d8c9d; }
+.empty-library svg { width: 40px; height: 40px; padding: 3px; color: #b994aa; margin-bottom: 9px; }
+.empty-library strong { font-size: 15px; font-weight: 600; color: #6c566c; }
+.empty-library span { font-size: 12px; }
+
+/* Menus, dialogs and the greeting editor share a restrained surface system. */
+.management-modal-backdrop, .type-settings-backdrop, .publisher-pin-backdrop { background: #30203652; backdrop-filter: blur(7px); }
+.management-modal, .editor-sheet, .type-settings-window, .publisher-pin-card { border: 1px solid #ece1e9; border-radius: 22px; background: #fffdfd; box-shadow: 0 18px 75px #34243822; color: #463749; }
+.home-settings-modal { width: min(480px, calc(100vw - 28px)); }
+.management-modal .sheet-header, .editor-sheet .sheet-header, .type-settings-window .sheet-header { padding: 18px 20px; border-bottom: 1px solid #f0e8ee; background: #fffdfd; }
+.sheet-header h2 { font-size: 16px; font-weight: 650; letter-spacing: -.3px; color: #49364b; }
+.sheet-close, .home-settings-back { display: grid; place-items: center; width: 32px; height: 32px; padding: 7px; border: 0; border-radius: 10px; background: #f5eef3; color: #94768e; }
+.sheet-close svg, .home-settings-back svg { width: 18px; height: 18px; }
+.home-settings-menu { padding: 12px; gap: 5px; }
+.home-settings-menu-item { gap: 13px; padding: 14px 12px; border: 1px solid transparent; border-radius: 15px; background: transparent; }
+.home-settings-menu-item:hover { border-color: #efe0e9; background: #fcf5f9; }
+.home-settings-menu-icon { display: grid; place-items: center; width: 43px; height: 43px; border-radius: 14px; background: #f5eaf1; color: #a77896; }
+.home-settings-menu-item:nth-child(2) .home-settings-menu-icon { background: #eaf1ef; color: #7d9e91; }
+.home-settings-menu-item:nth-child(3) .home-settings-menu-icon { background: #edf0f8; color: #8b9cbd; }
+.home-settings-menu-icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; stroke-linecap: round; }
+.home-settings-menu-item strong { color: #514053; font-size: 14px; font-weight: 600; }
+.home-settings-menu-item small { margin-top: 4px; color: #a08e9f; font-size: 11px; }
+.home-settings-chevron { display: grid; place-items: center; color: #c7b7c4; }
+.home-settings-chevron svg { width: 17px; height: 17px; }
+.home-settings-detail { padding: 20px; gap: 18px; }
+.home-settings-detail label { gap: 8px; color: #8c7487; font-size: 12px; font-weight: 500; }
+.home-settings-detail input:not([type=checkbox]), .home-settings-detail select { min-height: 44px; border: 1px solid #e9dfe7; border-radius: 12px; background: #fff; color: #5a465b; padding: 10px 12px; font-size: 16px; box-shadow: none; }
+.home-settings-detail input:focus, .home-settings-detail select:focus { outline: 2px solid #cfaac4; outline-offset: 2px; }
+.home-settings-detail .button-primary { min-height: 44px; background: #94617f; border-radius: 12px; box-shadow: none; }
+.greeting-preview-card { padding: 16px; border: 1px solid #eddce6; border-radius: 18px; background: radial-gradient(ellipse at 20% 0%, #fff 0%, transparent 65%), #f8eef4; }
+.preview-caption { display: inline-flex; align-items: center; gap: 6px; color: #b394a7; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+.preview-caption svg { width: 13px; height: 13px; }
+.greeting-settings-detail .greeting-preview { display: grid; place-items: center; min-height: 80px; margin: 0; padding: 16px 6px 6px; border: 0; border-radius: 0; background: none; text-align: center; line-height: 1.6; overflow-wrap: anywhere; }
+.greeting-style-fields { display: grid; grid-template-columns: 80px minmax(0, 1fr) 58px; gap: 10px; }
+.home-settings-detail .color-setting-label input { width: 100%; height: 44px; padding: 5px; border-radius: 12px; }
+.greeting-icon-picker { padding: 0; gap: 10px; border: 0; background: none; }
+.greeting-icon-picker-heading strong { font-size: 12px; font-weight: 500; color: #8c7487; }
+.greeting-icon-options { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 7px; }
+.greeting-icon-option { display: grid; place-items: center; width: 100%; height: 38px; padding: 0; border: 1px solid #efe5ec; border-radius: 11px; background: #fcf9fb; font-size: 21px; box-shadow: none; }
+.greeting-icon-option:hover { background: #f6e7f0; border-color: #d6b1c8; transform: none; }
+.greeting-icon-hint { color: #b6a2b1; font-size: 10px; line-height: 1.5; }
+.greeting-palette { display: flex; gap: 10px; }
+.greeting-palette button { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 3px solid #fff; outline: 1px solid #eadfe7; border-radius: 50%; color: #fff; font-size: 12px; }
+.greeting-palette button[aria-pressed=true] { outline: 2px solid #b48ca5; }
+.storage-settings-detail .retention-toggle { display: flex; align-items: center; flex-direction: row; justify-content: space-between; padding: 14px; border: 1px solid #eee1e9; border-radius: 14px; background: #faf5f8; color: #77556e; }
+.retention-toggle input { accent-color: #94617f; width: 19px; height: 19px; }
+
+/* Keep toolbar height unchanged so the sheet viewport and dock do not shift. */
+.bottom-toolbar { border-top: 1px solid #eadfe7; background: #fffdfdf5; box-shadow: 0 -6px 24px #78506308; backdrop-filter: blur(16px); }
+.bottom-toolbar button { position: relative; gap: 3px; border-radius: 14px; color: #a090a1; font-weight: 500; }
+.bottom-toolbar button .toolbar-icon { display: grid; place-items: center; width: 34px; height: 27px; border-radius: 10px; }
+.bottom-toolbar button .toolbar-icon svg { width: 21px; height: 21px; stroke-width: 1.7; }
+.bottom-toolbar button.is-active { color: #98617e; background: transparent; }
+.bottom-toolbar button.is-active .toolbar-icon { background: #f3e4ed; }
+.bottom-toolbar button small { font-size: 10px; font-weight: 600; }
+.editor-sheet .sheet-content .button-primary, .management-modal .button-primary, .type-settings-window .button-primary { background: #94617f; border-radius: 11px; box-shadow: none; }
+.editor-sheet .sheet-content .button-secondary, .management-modal .button-secondary, .type-settings-window .button-secondary { background: #f4edf2; color: #88617b; border-radius: 11px; }
+.editor-sheet .compact-form input, .editor-sheet .compact-form select, .management-modal .compact-form input:not([type=checkbox]), .management-modal .compact-form select, .type-settings-window input { border-color: #e6dce4; border-radius: 10px; }
+.editor-sheet .group-chip, .editor-sheet .setting-type-chip { border-radius: 10px; }
+.editor-sheet .group-chip.is-active, .editor-sheet .setting-type-chip.is-active { border-color: #d8b7cb; background: #f6eaf1; color: #8b5a78; }
+@media (max-width: 400px) {
+ .app-shell:not(.app-shell-page) { padding-inline: 14px; }
+ .home-heading { margin-bottom: 30px; gap: 8px; }
+ .a4-library-card { grid-template-columns: 54px minmax(0, 1fr); gap: 0 12px; padding: 13px; }
+ .home-screen .mini-a4-paper { width: 54px; height: 68px; }
+ .library-card-calculation { gap: 8px; font-size: 10px; }
+ .greeting-icon-options { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+ .home-settings-detail { padding: 16px; }
+}

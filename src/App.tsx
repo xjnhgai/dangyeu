@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 
+import AppIcon from './components/AppIcon'
+import { clampPaperZoom } from './core/paper-zoom'
 import A4PageV2 from './components/A4PageV2'
 import ListingInput from './components/ListingInput'
 import { cleanListingInput } from './core/input-text'
@@ -64,6 +66,7 @@ import type {
 } from './core/models-v2'
 
 import './App.css'
+import './refresh.css'
 
 type ToolKey = 'view' | 'edit' | 'results'
 type PanelKey = ToolKey | null
@@ -533,13 +536,6 @@ function isDraftComplete(row: DraftRow, type: SettingTypeDefinition): boolean {
   }
 }
 
-function ToolbarIcon({ name }: { name: 'eye' | 'edit' | 'chart' | 'download' }) {
-  const common = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
-  if (name === 'eye') return <svg viewBox="0 0 24 24" aria-hidden="true" {...common}><path d="M2.5 12s3.4-6 9.5-6 9.5 6 9.5 6-3.4 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/></svg>
-  if (name === 'edit') return <svg viewBox="0 0 24 24" aria-hidden="true" {...common}><path d="m4 16.8-.8 4 4-.8L19.6 7.6a2.1 2.1 0 0 0-3-3L4 16.8Z"/><path d="m14.9 6.3 3 3"/></svg>
-  if (name === 'chart') return <svg viewBox="0 0 24 24" aria-hidden="true" {...common}><path d="M4 19.5V4.5M4 19.5h16"/><path d="m7 15 3.5-4 3 2 4.5-6"/><path d="M16 7h2v2"/></svg>
-  return <svg viewBox="0 0 24 24" aria-hidden="true" {...common}><path d="M12 3v11m0 0 4-4m-4 4-4-4"/><path d="M4 16v4h16v-4"/></svg>
-}
 
 function App() {
   const { preferences } = useAppPreferences()
@@ -1874,13 +1870,13 @@ function App() {
               aria-label="Mở cài đặt"
               aria-expanded={homeSettingsOpen}
             >
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+              <AppIcon name="settings" />
             </button>
             <div className="home-greeting" style={{ fontSize: `${greetingFontSize}px`, fontFamily: greetingFontFamily, color: greetingColor }}>
               <span>{greeting}</span>
             </div>
             <div className="home-actions">
-              <button className="button-primary create-a4-button" type="button" onClick={createTodayA4} aria-label="Tạo A4 mới">＋</button>
+              <button className="button-primary create-a4-button" type="button" onClick={createTodayA4} aria-label="Tạo A4 mới"><AppIcon name="plus" /></button>
             </div>
           </div>
           {storageError && <div className="storage-global-error" role="status">{storageError}</div>}
@@ -1896,35 +1892,36 @@ function App() {
                 <div className="sheet-header">
                   <div className="home-settings-title-row">
                     {homeSettingsSection !== 'menu' && (
-                      <button className="home-settings-back" type="button" onClick={() => setHomeSettingsSection('menu')} aria-label="Quay lại danh sách cài đặt">←</button>
+                      <button className="home-settings-back" type="button" onClick={() => setHomeSettingsSection('menu')} aria-label="Quay lại danh sách cài đặt"><AppIcon name="back" /></button>
                     )}
                     <h2>{homeSettingsSection === 'menu' ? 'Cài đặt' : homeSettingsSection === 'greeting' ? 'Lời chào' : homeSettingsSection === 'pin' ? 'PIN' : 'Lưu trữ'}</h2>
                   </div>
-                  <button className="sheet-close" type="button" onClick={() => setHomeSettingsOpen(false)} aria-label="Đóng cài đặt">×</button>
+                  <button className="sheet-close" type="button" onClick={() => setHomeSettingsOpen(false)} aria-label="Đóng cài đặt"><AppIcon name="close" /></button>
                 </div>
 
                 {homeSettingsSection === 'menu' && (
                   <nav className="home-settings-menu" aria-label="Danh mục cài đặt">
                     <button className="home-settings-menu-item" type="button" onClick={() => setHomeSettingsSection('greeting')}>
-                      <span className="home-settings-menu-icon greeting-menu-icon">Aa</span>
+                      <span className="home-settings-menu-icon greeting-menu-icon"><AppIcon name="sparkles" /></span>
                       <span><strong>Lời chào</strong><small>Chỉnh nội dung và kiểu chữ</small></span>
-                      <span className="home-settings-chevron">›</span>
+                      <span className="home-settings-chevron"><AppIcon name="chevron" /></span>
                     </button>
                     <button className="home-settings-menu-item" type="button" onClick={() => setHomeSettingsSection('pin')}>
-                      <span className="home-settings-menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>
+                      <span className="home-settings-menu-icon"><AppIcon name="lock" /></span>
                       <span><strong>PIN</strong><small>Thiết lập mã PIN</small></span>
-                      <span className="home-settings-chevron">›</span>
+                      <span className="home-settings-chevron"><AppIcon name="chevron" /></span>
                     </button>
                     <button className="home-settings-menu-item" type="button" onClick={() => setHomeSettingsSection('retention')}>
-                      <span className="home-settings-menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M7 3v4m10-4v4M4 9.5h16"/></svg></span>
+                      <span className="home-settings-menu-icon"><AppIcon name="archive" /></span>
                       <span><strong>Lưu trữ</strong><small>Điều chỉnh số ngày lưu trữ</small></span>
-                      <span className="home-settings-chevron">›</span>
+                      <span className="home-settings-chevron"><AppIcon name="chevron" /></span>
                     </button>
                   </nav>
                 )}
 
                 {homeSettingsSection === 'greeting' && (
-                  <div className="sheet-content compact-form home-settings-detail">
+                  <div className="sheet-content compact-form home-settings-detail greeting-settings-detail">
+                    <div className="greeting-preview-card"><span className="preview-caption"><AppIcon name="sparkles" /> Xem trước</span><div className="greeting-preview" style={{ fontSize: `${greetingFontSize}px`, fontFamily: greetingFontFamily, color: greetingColor }}>{greeting || 'Lời chào của bạn'}</div></div>
                     <label>Nội dung lời chào<input ref={greetingInputRef} value={greeting} onChange={(event) => setGreeting(event.target.value)} /></label>
                     <div className="greeting-style-fields">
                       <label>Cỡ chữ<select value={greetingFontSize} onChange={(event) => setGreetingFontSize(event.target.value)}><option value="14">14 px</option><option value="16">16 px</option><option value="18">18 px</option><option value="20">20 px</option><option value="22">22 px</option><option value="24">24 px</option><option value="28">28 px</option></select></label>
@@ -1952,7 +1949,7 @@ function App() {
                     </div>
                     <div className="greeting-icon-picker">
                       <div className="greeting-icon-picker-heading">
-                        <strong>Chèn icon vào nội dung</strong>
+                        <strong>Trang trí lời chào</strong>
                       </div>
                       <div className="greeting-icon-options" aria-label="Chèn icon vào lời chào">
                         {GREETING_ICON_OPTIONS.map((icon) => (
@@ -1970,8 +1967,8 @@ function App() {
                       </div>
                       <small className="greeting-icon-hint">Chọn icon để chèn tại vị trí con trỏ trong ô nội dung lời chào.</small>
                     </div>
-                    <div className="greeting-preview" style={{ fontSize: `${greetingFontSize}px`, fontFamily: greetingFontFamily, color: greetingColor }}>
-                      {greeting || 'Xem trước lời chào'}
+                    <div className="greeting-palette" role="group" aria-label="Màu lời chào nhanh">
+                      {['#81536c', '#c76785', '#326b61', '#356787', '#a47434', '#333044'].map((color) => <button type="button" key={color} aria-label={`Màu ${color}`} aria-pressed={greetingColor === color} style={{ backgroundColor: color }} onClick={() => setGreetingColor(color)}><span>{greetingColor === color ? '✓' : ''}</span></button>)}
                     </div>
                   </div>
                 )}
@@ -1982,8 +1979,9 @@ function App() {
               </section>
             </div>
           )}
+          <div className="library-heading"><h1>Trang của bạn</h1><span>{sortedDates.length} trang</span></div>
           {sortedDates.length === 0 ? (
-            <div className="empty-library">Chưa có A4</div>
+            <div className="empty-library"><AppIcon name="pages" /><strong>Chưa có A4</strong><span>Chạm dấu + để tạo trang đầu tiên</span></div>
           ) : (
             <div className="a4-library-grid">
               {sortedDates.map((group1) => {
@@ -1994,7 +1992,7 @@ function App() {
                 return (
                   <article className="a4-library-card" key={group1.id}>
                     <button className="a4-card-open" type="button" onClick={() => openDate(group1.id)} aria-label={`Mở A4 ngày ${group1.dateLabel}`}>
-                      <div className="mini-a4-paper">
+                      <div className="mini-a4-paper"><AppIcon name="pages" />
                         <div className="mini-a4-title">{group1.dateLabel}</div>
                         <div className="mini-a4-lines">
                           {typeNames.slice(0, 6).map((name, index) => (
@@ -2010,7 +2008,7 @@ function App() {
                     <div className="library-card-calculation" aria-label={`Đánh ${formatLibraryAmount(totals?.d ?? null)}, Trúng ${formatLibraryAmount(totals?.t ?? null)}, Trúng trừ Đánh ${formatLibraryAmount(totals?.difference ?? null)}`}>
                       <span>Đánh <b>{formatLibraryAmount(totals?.d ?? null)}</b></span>
                       <span>Trúng <b>{formatLibraryAmount(totals?.t ?? null)}</b></span>
-                      <strong>{formatLibraryAmount(totals?.difference ?? null)}</strong>
+                      <strong className={(totals?.difference ?? 0) < 0 ? 'is-negative' : 'is-positive'}>{formatLibraryAmount(totals?.difference ?? null)}</strong>
                     </div>
                   </article>
                 )
@@ -2022,10 +2020,10 @@ function App() {
         <section className="page-screen">
           <div className="page-topline desktop-zoom-line">
             <div className="zoom-controls" aria-label="Thu phóng A4">
-              <button type="button" onClick={() => setZoom((current) => Math.max(0.35, Number((current - 0.08).toFixed(2))))} aria-label="Thu nhỏ">−</button>
+              <button type="button" onClick={() => setZoom((current) => clampPaperZoom(Number((current - 0.15).toFixed(2))))} aria-label="Thu nhỏ">−</button>
               <button type="button" onClick={() => applyPageFit('page')} aria-label="Vừa trang">Vừa trang</button>
               <button type="button" onClick={() => applyPageFit('width')} aria-label="Vừa chiều ngang">Vừa ngang</button>
-              <button type="button" onClick={() => setZoom((current) => Math.min(1, Number((current + 0.08).toFixed(2))))} aria-label="Phóng to">＋</button>
+              <button type="button" onClick={() => setZoom((current) => clampPaperZoom(Number((current + 0.15).toFixed(2))))} aria-label="Phóng to">＋</button>
             </div>
           </div>
 
@@ -2265,7 +2263,7 @@ function App() {
                         <div className="sheet-header-title-row">
                           <h2>Cài đặt {editingType.name}</h2>
                         </div>
-                        <button className="sheet-close" type="button" onClick={closeTypeSettings} aria-label="Đóng cài đặt">×</button>
+                        <button className="sheet-close" type="button" onClick={closeTypeSettings} aria-label="Đóng cài đặt"><AppIcon name="close" /></button>
                       </div>
                       <div className="sheet-content compact-form type-settings-content">
                         {isProfileCoefficientFormula(editingType.formulaId) ? (
@@ -2324,7 +2322,7 @@ function App() {
                     clearFeedback()
                   }}
                 >
-                  <span className="toolbar-icon"><ToolbarIcon name={tool.icon} /></span>
+                  <span className="toolbar-icon"><AppIcon name={tool.icon} /></span>
                   <small>{tool.label}</small>
                 </button>
               ))}
