@@ -108,19 +108,19 @@ describe('three-level V2 tree', () => {
     expect('instances' in item).toBe(false)
   })
 
-  it('adds direct Group3 and remembers its non-empty coefficients', () => {
+  it('adds direct Group3 without changing publisher-protected defaults', () => {
     const data = base()
     const updated = add(data, g3('entry-1'))
     expect(entries(updated)).toHaveLength(1)
-    expect(defaultType(updated).defaultCoefficientD).toBe('1.5')
-    expect(defaultType(updated).defaultCoefficientT).toBe('2.5')
-    expect(defaultType(data).defaultCoefficientD).toBe('1')
+    expect(defaultType(updated)).toEqual(defaultType(data))
+    expect(defaultType(updated).defaultCoefficientD).toBe('1')
+    expect(defaultType(updated).defaultCoefficientT).toBe('1')
   })
 
-  it('updates defaults independently and keeps an old default when new value is blank', () => {
+  it('ignores stale or blank row coefficients when adding a new entry', () => {
     let data = updateSettingTypeDefaults(base(), 'setting-type-1', { coefficientD: '1.5', coefficientT: '2.5' })
     data = add(data, g3('entry-1', { coefficientD: '3.0', coefficientT: '' }))
-    expect(defaultType(data).defaultCoefficientD).toBe('3.0')
+    expect(defaultType(data).defaultCoefficientD).toBe('1.5')
     expect(defaultType(data).defaultCoefficientT).toBe('2.5')
   })
 
@@ -145,9 +145,9 @@ describe('three-level V2 tree', () => {
       coefficientD: '999',
       coefficientT: '888',
     })
-    // Editing a saved entry does not silently rewrite remembered defaults.
-    expect(defaultType(updated).defaultCoefficientD).toBe('1.5')
-    expect(defaultType(updated).defaultCoefficientT).toBe('2.5')
+    // Editing a saved entry cannot rewrite catalog coefficients.
+    expect(defaultType(updated).defaultCoefficientD).toBe('1')
+    expect(defaultType(updated).defaultCoefficientT).toBe('1')
   })
 
   it('clears D default independently from T', () => {

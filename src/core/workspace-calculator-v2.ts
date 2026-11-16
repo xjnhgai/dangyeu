@@ -1,3 +1,4 @@
+import { coefficientTypesForName } from './coefficient-settings'
 import { resultNumbers } from './result-input'
 import {
   calculateSetting,
@@ -17,6 +18,7 @@ import type {
   Group3,
   ListingCountKey,
   FormulaId,
+  SettingTypeDefinition,
 } from './models-v2'
 
 export type WorkspaceCalculationV2ErrorCode =
@@ -136,14 +138,12 @@ export function parseCoefficientTextV2(text: string, fieldName: string): number 
   return parsed
 }
 
-function calculateGroup3(group3: Readonly<Group3>, drawData: DrawData, data: CalculationDataV2): SettingCalculationResult {
+function calculateGroup3(group3: Readonly<Group3>, drawData: DrawData, type: Readonly<SettingTypeDefinition>): SettingCalculationResult {
   try {
-    const type = data.settingTypes.find((item) => item.id === group3.settingTypeId)
-    if (!type) throw new WorkspaceCalculationV2Error('INVALID_DRAW_DATA', `Không tìm thấy loại thiết lập của ${group3.id}.`)
     const listing = parseSettingNumberListV2(group3.listing, type.formulaId)
     const usesProfileCoefficients = isProfileCoefficientFormula(type.formulaId)
-    let coefficientDText = group3.coefficientD
-    let coefficientTText = group3.coefficientT
+    let coefficientDText = type.defaultCoefficientD ?? ''
+    let coefficientTText = type.defaultCoefficientT ?? ''
 
     if (usesProfileCoefficients) {
       const profileKey = getCoefficientProfileKey(type.formulaId, listing)
@@ -152,23 +152,12 @@ function calculateGroup3(group3: Readonly<Group3>, drawData: DrawData, data: Cal
           ? 'ĐA/ĐB cần danh sách toàn số 2 chữ số hoặc toàn số 3 chữ số.'
           : 'XA/XB yêu cầu đúng 2, 3, 4 hoặc 5 số trong ô Liệt kê.')
       }
-      const rowCoefficients = group3.coefficientsByCount?.[profileKey]
-      const defaultCoefficients = type.defaultCoefficientsByCount?.[profileKey]
-      // Backward compatibility applies only to DA/DB, whose profile-based
-      // coefficients replaced an older scalar setup. XA/XB have always
-      // required a distinct coefficient pair for each listing count, so a
-      // scalar row/default must never silently satisfy a missing profile.
-      const supportsLegacyScalarFallback = type.formulaId === 'da' || type.formulaId === 'db'
-      coefficientDText = rowCoefficients?.coefficientD
-        || (supportsLegacyScalarFallback ? group3.coefficientD : '')
-        || defaultCoefficients?.coefficientD
-        || (supportsLegacyScalarFallback ? group3.coefficientD || type.defaultCoefficientD : '')
-        || ''
-      coefficientTText = rowCoefficients?.coefficientT
-        || (supportsLegacyScalarFallback ? group3.coefficientT : '')
-        || defaultCoefficients?.coefficientT
-        || (supportsLegacyScalarFallback ? group3.coefficientT || type.defaultCoefficientT : '')
-        || ''
+      const pair = type.defaultCoefficientsByCount?.[profileKey]
+      // Legacy ĐA/ĐB catalogs may have only scalar defaults. Never read a row
+      // snapshot, or borrow a missing name profile from the global catalog.
+      const legacyScalar = type.formulaId === 'da' || type.formulaId === 'db'
+      coefficientDText = pair?.coefficientD ?? (legacyScalar ? type.defaultCoefficientD : '') ?? ''
+      coefficientTText = pair?.coefficientT ?? (legacyScalar ? type.defaultCoefficientT : '') ?? ''
       const profileLabel = type.formulaId === 'da' || type.formulaId === 'db'
         ? `${profileKey} chữ số`
         : `${profileKey} số trong danh sách`
@@ -227,12 +216,12 @@ export function calculateWorkspaceForA4V2(
   }
 
   const settingResults = new Map<EntityId, SettingCalculationResult>()
+  const types = selection.mode === 'group2'
+    ? coefficientTypesForName(data, projection.group2!.name) : data.settingTypes
+  const typesById = new Map(types.map(type => [type.id, type]))
   for (const entry of projection.entries) {
-    const name = projection.group1.groups2.find(g=>g.id===entry.group2Id)?.name.trim().normalize('NFC').toLocaleLowerCase('vi-VN') ?? ''
-    const types = selection.mode === 'group2' ? data.nameCoefficientTypes?.[name] ?? data.settingTypes : data.settingTypes
-    const type = types.find(t=>t.id===entry.group3.settingTypeId) ?? entry.settingType
-    const row = {...entry.group3, coefficientD:type.defaultCoefficientD??'',coefficientT:type.defaultCoefficientT??'',coefficientsByCount:type.defaultCoefficientsByCount as Group3['coefficientsByCount']}
-    settingResults.set(entry.group3.id, calculateGroup3(row, projection.group1.drawData, data))
+    const type = typesById.get(entry.group3.settingTypeId)!
+    settingResults.set(entry.group3.id, calculateGroup3(entry.group3, projection.group1.drawData, type))
   }
   const summary = buildA4SummaryV2(projection, settingResults)
   return { projection, settingResults, summary }

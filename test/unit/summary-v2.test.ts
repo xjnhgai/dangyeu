@@ -14,6 +14,8 @@ function sample(drawData: Group1['drawData'] = { oneToSeven: ['0012', '0023'], g
   const b: Group3 = { kind: 'group3', id: 'b', settingTypeId: 'setting-type-1', listing: '23', point: '1', coefficientD: '4', coefficientT: '2' }
   data = addGroup3V2(data, 'date', 'g1', a)
   data = addGroup3V2(data, 'date', 'g2', b)
+  data.settingTypes[0].defaultCoefficientD='3'
+  data.settingTypes[0].defaultCoefficientT='5'
   return data
 }
 
@@ -22,18 +24,18 @@ describe('A4 summary V2', () => {
     const result = calculateWorkspaceForA4V2(sample(), { mode: 'combined', group1Id: 'date' })
     expect(result.summary.sections).toHaveLength(1)
     expect(result.summary.sections[0]!.title).toBe('LB')
-    expect(result.summary.sections[0]!.totals).toEqual({ settingCount: 2, d: 10, t: 12, difference: 2 })
-    expect(result.summary.totals).toEqual({ settingCount: 2, d: 10, t: 12, difference: 2 })
+    expect(result.summary.sections[0]!.totals).toEqual({ settingCount: 2, d: 9, t: 15, difference: 6 })
+    expect(result.summary.totals).toEqual({ settingCount: 2, d: 9, t: 15, difference: 6 })
   })
 
   it('sums only the selected Group2 in individual mode', () => {
     const result = calculateWorkspaceForA4V2(sample(), { mode: 'group2', group1Id: 'date', group2Id: 'g2' })
-    expect(result.summary.totals).toEqual({ settingCount: 1, d: 4, t: 2, difference: -2 })
+    expect(result.summary.totals).toEqual({ settingCount: 1, d: 3, t: 5, difference: 2 })
   })
 
   it('keeps T and difference null when draw results are empty', () => {
     const result = calculateWorkspaceForA4V2(sample({ oneToSeven: [], gdb: '' }), { mode: 'combined', group1Id: 'date' })
-    expect(result.summary.totals.d).toBe(10)
+    expect(result.summary.totals.d).toBe(9)
     expect(result.summary.totals.t).toBeNull()
     expect(result.summary.totals.difference).toBeNull()
   })
@@ -52,7 +54,7 @@ describe('A4 summary V2', () => {
     const result = calculateWorkspaceForA4V2(data, { mode: 'combined', group1Id: 'date' })
     expect(result.settingResults.get('da')?.t).toBeNull()
     expect(result.settingResults.get('db')?.t).toBeNull()
-    expect(result.summary.sections.find((section) => section.title === 'LB')?.totals.t).toBe(12)
+    expect(result.summary.sections.find((section) => section.title === 'LB')?.totals.t).toBe(15)
     expect(result.summary.sections.find((section) => section.title === 'ĐA')?.totals.t).toBeNull()
     expect(result.summary.sections.find((section) => section.title === 'ĐB')?.totals.t).toBeNull()
     // Do not show an incomplete combined T as though all formula scopes were ready.

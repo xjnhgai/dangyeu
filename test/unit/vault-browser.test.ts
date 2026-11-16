@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { webcrypto } from 'node:crypto'
 import { IDBFactory, IDBObjectStore as FakeObjectStore } from 'fake-indexeddb'
-import { createPinCredential, defaultAppPreferences } from '../../src/core/app-preferences'
+import { createPinCredential, defaultAppPreferences, applyRetention } from '../../src/core/app-preferences'
 import { createCalculationDataV2 } from '../../src/core/tree-v2'
 import { loadAppPreferences, loadCalculationWorkspace, saveAppPreferences, saveCalculationWorkspace, type CalculationWorkspaceV2 } from '../../src/core/vault-storage'
 
@@ -88,5 +88,29 @@ describe('interrupted wipe recovery', () => {
     await wipeCalculationEntries(preferences)
     expect((await loadCalculationWorkspace())?.value.data.groups1).toEqual([])
     expect((await loadAppPreferences()).wipePending).toBe(false)
+  })
+})
+
+
+describe('name coefficient durability', () => {
+  it('retains private scalars/profiles through encrypted reload, retention and a PIN wipe', async () => {
+    const data=createCalculationDataV2()
+    data.nameCoefficientTypes={lan:structuredClone(data.settingTypes)}
+    data.nameCoefficientTypes.lan[0].defaultCoefficientD='7'
+    data.nameCoefficientTypes.lan[0].defaultCoefficientT='11'
+    data.nameCoefficientTypes.lan.find(t=>t.formulaId==='xb')!.defaultCoefficientsByCount!['3']={coefficientD:'0',coefficientT:'2,5'}
+    data.groups1=[{kind:'group1',id:'old',dateLabel:'01/01/2000',drawData:{oneToSeven:[],gdb:''},groups2:[{kind:'group2',id:'lan',name:'Lan',groups3:[]}]}]
+    const workspace: CalculationWorkspaceV2={schemaVersion:2,data,updatedAt:123,editorState:{selectedGroup1Id:null,selectedGroup2Id:null,a4Mode:'combined',activeSettingTypeId:null,draftRowsByType:{},savedRowDrafts:{},drawOneToSeven:'',drawGdb:'',dateDraft:'',newGroupName:'',showNewGroupInput:false,calculationEnabled:false,activePanel:null,managementPanel:null}}
+    await saveCalculationWorkspace(workspace)
+    const loaded=(await loadCalculationWorkspace())!.value
+    expect(loaded.data.nameCoefficientTypes).toEqual(data.nameCoefficientTypes)
+    const pruned=applyRetention(loaded,{...defaultAppPreferences(),retention:{enabled:true,days:1}},new Date('2026-11-16T10:00:00Z')).workspace
+    expect(pruned.data.groups1).toEqual([])
+    expect(pruned.data.nameCoefficientTypes).toEqual(data.nameCoefficientTypes)
+    await wipeCalculationEntries({...defaultAppPreferences(),wipePending:true,failedAttempts:3})
+    const cleared=(await loadCalculationWorkspace())!.value
+    expect(cleared.data.groups1).toEqual([])
+    expect(cleared.data.nameCoefficientTypes).toEqual(data.nameCoefficientTypes)
+    expect((await loadQuickSettings())!.value.group2NameSuggestions).toContain('Lan')
   })
 })

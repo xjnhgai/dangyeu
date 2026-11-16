@@ -3,8 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { StrictMode } from 'react'
 import { webcrypto } from 'node:crypto'
 import { IDBFactory } from 'fake-indexeddb'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import App from '../../src/App'
+import { calculateWorkspaceForA4V2 } from '../../src/core/workspace-calculator-v2'
 import AppGate from '../../src/components/AppGate'
 import { PinSettings } from '../../src/components/PrivacySettings'
 import { checkPin, createPinCredential, defaultAppPreferences } from '../../src/core/app-preferences'
@@ -610,4 +611,129 @@ describe('application integration', () => {
     expect(screen.queryByRole('button', { name: 'Mở A4 ngày 01/01/2000' })).toBeNull()
     expect((await loadCalculationWorkspace())?.value.data.groups1.map((page) => page.id)).toEqual(['a4'])
   })
+})
+
+
+describe('name coefficient settings end to end', () => {
+  it('requires 1945 on every entry, persists isolated settings, and keeps combined rates separate', async () => {
+    const workspace = fixture()
+    workspace.data.settingTypes[0].defaultCoefficientD = '2'
+    workspace.data.settingTypes[0].defaultCoefficientT = '3'
+    workspace.data.groups1[0].groups2[0].groups3[0] = {
+      kind:'group3',id:'row',settingTypeId:'setting-type-1',listing:'12',point:'5',coefficientD:'99',coefficientT:'99',
+    }
+    const draw = ['11112', ...Array.from({length:25},()=> '99999')]
+    workspace.data.groups1[0].drawData = {oneToSeven:draw,gdb:'22212'}
+    workspace.editorState = {...workspace.editorState,a4Mode:'group2',drawOneToSeven:draw.join(', '),drawGdb:'22212',calculationEnabled:true}
+    await saveCalculationWorkspace(workspace)
+    await openApp()
+    fireEvent.click(await screen.findByRole('button', {name:/Mở A4 ngày/}))
+    const paperValue = (field:string) => document.querySelector(`.a4-v2-section-results.is-visible .a4-v2-result-${field} b`)?.textContent
+    expect(paperValue('d')).toBe('10'); expect(paperValue('t')).toBe('30')
+    fireEvent.click(screen.getByRole('button',{name:'Cài đặt hệ số theo tên'}))
+    expect(screen.queryByRole('dialog',{name:'Hệ số theo tên Lan'})).toBeNull()
+    fireEvent.change(await screen.findByLabelText('PIN cài đặt'),{target:{value:'1495'}})
+    fireEvent.click(screen.getByRole('button',{name:'Mở cài đặt'}))
+    await screen.findByText('PIN cài đặt chưa đúng.')
+    expect(screen.queryByLabelText('LB Hệ số Đánh')).toBeNull()
+    fireEvent.change(screen.getByLabelText('PIN cài đặt'),{target:{value:'1945'}})
+    fireEvent.click(screen.getByRole('button',{name:'Mở cài đặt'}))
+    const dialog = await screen.findByRole('dialog',{name:'Hệ số theo tên Lan'})
+    expect(within(dialog).queryByLabelText('Tên thiết lập')).toBeNull()
+    expect(within(dialog).queryByLabelText('Tên khác')).toBeNull()
+    expect(within(dialog).queryByText(/Reset tên/)).toBeNull()
+    fireEvent.change(within(dialog).getByLabelText('LB Hệ số Đánh'),{target:{value:'-1'}})
+    fireEvent.click(within(dialog).getByRole('button',{name:'Lưu hệ số'}))
+    expect(within(dialog).getByRole('alert').textContent).toMatch(/không âm/)
+    expect(paperValue('d')).toBe('10')
+    fireEvent.change(within(dialog).getByLabelText('LB Hệ số Đánh'),{target:{value:'7'}})
+    fireEvent.change(within(dialog).getByLabelText('LB Hệ số Trúng'),{target:{value:'11'}})
+    fireEvent.change(within(dialog).getByLabelText('ĐA Hệ số Đánh (2 chữ số)'),{target:{value:'13'}})
+    fireEvent.change(within(dialog).getByLabelText('ĐA Hệ số Trúng (2 chữ số)'),{target:{value:'17'}})
+    fireEvent.change(within(dialog).getByLabelText('XB Hệ số Đánh (3 số)'),{target:{value:'19'}})
+    fireEvent.change(within(dialog).getByLabelText('XB Hệ số Trúng (3 số)'),{target:{value:'23'}})
+    fireEvent.click(within(dialog).getByRole('button',{name:'Lưu hệ số'}))
+    expect(screen.queryByRole('dialog',{name:'Hệ số theo tên Lan'})).toBeNull()
+    expect(paperValue('d')).toBe('35');expect(paperValue('t')).toBe('110')
+    await waitFor(async()=>{
+      const data = (await loadCalculationWorkspace())!.value.data
+      expect(data.nameCoefficientTypes!.lan[0].defaultCoefficientD).toBe('7')
+      expect(data.settingTypes[0].defaultCoefficientD).toBe('2')
+      expect(data.groups1[0].groups2[0].groups3[0].coefficientD).toBe('99')
+      expect(data.nameCoefficientTypes!.lan.find(t=>t.formulaId==='da')!.defaultCoefficientsByCount!['2']).toEqual({coefficientD:'13',coefficientT:'17'})
+      expect(data.nameCoefficientTypes!.lan.find(t=>t.formulaId==='xb')!.defaultCoefficientsByCount!['3']).toEqual({coefficientD:'19',coefficientT:'23'})
+    }, {timeout:3000})
+    // Global edits must not overwrite a saved name configuration.
+    fireEvent.click(screen.getByRole('button',{name:'Cài đặt nhóm thiết lập'}))
+    fireEvent.change(await screen.findByLabelText('PIN cài đặt'),{target:{value:'1945'}})
+    fireEvent.click(screen.getByRole('button',{name:'Mở cài đặt'}))
+    fireEvent.change(await screen.findByLabelText('Hệ số Đánh'),{target:{value:'4'}})
+    fireEvent.change(screen.getByLabelText('Hệ số Trúng'),{target:{value:'6'}})
+    fireEvent.click(screen.getByRole('button',{name:'Đóng cửa sổ chỉnh sửa'}))
+    expect(paperValue('d')).toBe('35');expect(paperValue('t')).toBe('110')
+    fireEvent.click(screen.getByRole('button',{name:'Xem'}))
+    fireEvent.click(screen.getByRole('button',{name:'Toàn bộ'}))
+    expect(paperValue('d')).toBe('20');expect(paperValue('t')).toBe('60')
+    fireEvent.click(screen.getAllByRole('button',{name:'Quay lại'})[0])
+    fireEvent.click(await screen.findByRole('button',{name:/Mở A4 ngày/}))
+    fireEvent.click(screen.getByRole('button',{name:'Xem'}))
+    fireEvent.click(screen.getByRole('button',{name:'Lan'}))
+    expect(paperValue('d')).toBe('35');expect(paperValue('t')).toBe('110')
+    await waitFor(async()=>{
+      const saved=(await loadCalculationWorkspace())!.value
+      expect(saved.editorState.a4Mode).toBe('group2')
+      expect(saved.editorState.activePanel).toBeNull()
+      expect(saved.data.settingTypes[0].defaultCoefficientD).toBe('4')
+    },{timeout:3000})
+    cleanup()
+    await openApp()
+    fireEvent.click(await screen.findByRole('button',{name:/Mở A4 ngày/}))
+    expect(paperValue('d')).toBe('35');expect(paperValue('t')).toBe('110')
+    fireEvent.click(screen.getByRole('button',{name:'Sửa'}))
+    fireEvent.click(screen.getByRole('button',{name:'Cài đặt hệ số theo tên'}))
+    expect(screen.queryByLabelText('LB Hệ số Đánh')).toBeNull()
+    fireEvent.change(await screen.findByLabelText('PIN cài đặt'),{target:{value:'1945'}})
+    fireEvent.click(screen.getByRole('button',{name:'Mở cài đặt'}))
+    expect((await screen.findByLabelText('LB Hệ số Đánh') as HTMLInputElement).value).toBe('7')
+    fireEvent(window,new Event('pagehide'))
+    expect(screen.queryByRole('dialog',{name:'Hệ số theo tên Lan'})).toBeNull()
+    fireEvent.click(screen.getByRole('button',{name:'Cài đặt hệ số theo tên'}))
+    await screen.findByLabelText('PIN cài đặt')
+    expect(screen.queryByLabelText('LB Hệ số Đánh')).toBeNull()
+    const data=(await loadCalculationWorkspace())!.value.data
+    expect(calculateWorkspaceForA4V2(data,{mode:'combined',group1Id:'a4'}).summary.totals).toMatchObject({d:20,t:60})
+  })
+})
+
+
+it('allows editing and adding rows with obsolete empty/invalid snapshots, without rewriting coefficients', async () => {
+  const workspace=fixture()
+  const type=workspace.data.settingTypes[0]
+  type.defaultCoefficientD='2';type.defaultCoefficientT='3'
+  workspace.data.nameCoefficientTypes={lan:[{...type,defaultCoefficientD:'7',defaultCoefficientT:'11'}]}
+  const row=workspace.data.groups1[0].groups2[0].groups3[0]
+  row.coefficientD='-1';row.coefficientT=''
+  workspace.editorState.a4Mode='group2'
+  workspace.editorState.draftRowsByType={'lan:setting-type-1':[{id:'pending',listing:'34',point:'2',coefficientD:'',coefficientT:''}]}
+  await saveCalculationWorkspace(workspace)
+  await openApp()
+  fireEvent.click(await screen.findByRole('button',{name:/Mở A4 ngày/}))
+  fireEvent.focus(screen.getAllByLabelText('Liệt kê')[0])
+  fireEvent.change(screen.getByLabelText('Liệt kê đang nhập'),{target:{value:'56'}})
+  fireEvent.click(within(screen.getByLabelText('Nhập trực tiếp trên A4')).getByRole('button',{name:'Lưu'}))
+  await waitFor(async()=>{
+    const data=(await loadCalculationWorkspace())!.value.data
+    expect(data.groups1[0].groups2[0].groups3[0].listing).toBe('56')
+    expect(data.settingTypes[0].defaultCoefficientD).toBe('2')
+    expect(data.nameCoefficientTypes!.lan[0].defaultCoefficientD).toBe('7')
+  },{timeout:3000})
+  if (screen.queryByRole('button',{name:'Đóng thanh nhập'})) fireEvent.click(screen.getByRole('button',{name:'Đóng thanh nhập'}))
+  fireEvent.click(screen.getByRole('button',{name:'Thêm'}))
+  await waitFor(async()=>{
+    const data=(await loadCalculationWorkspace())!.value.data
+    expect(data.groups1[0].groups2[0].groups3).toHaveLength(2)
+    expect(data.settingTypes[0].defaultCoefficientD).toBe('2')
+    expect(data.nameCoefficientTypes!.lan[0].defaultCoefficientD).toBe('7')
+  },{timeout:3000})
+
 })

@@ -1,3 +1,4 @@
+import { coefficientTypesForName } from './core/coefficient-settings'
 import NameCoefficients from './components/NameCoefficients'
 import AllEditor from './components/AllEditor'
 import { allConfig } from './core/all-input'
@@ -233,9 +234,8 @@ function isDraftComplete(row: DraftRow, type: SettingTypeDefinition): boolean {
       return true
     }
 
-    if (!row.coefficientD.trim() || !row.coefficientT.trim()) return false
-    parseCoefficientTextV2(row.coefficientD, 'Hệ số Đánh')
-    parseCoefficientTextV2(row.coefficientT, 'Hệ số Trúng')
+    parseCoefficientTextV2(type.defaultCoefficientD ?? '', 'Hệ số Đánh')
+    parseCoefficientTextV2(type.defaultCoefficientT ?? '', 'Hệ số Trúng')
     return true
   } catch {
     return false
@@ -1087,7 +1087,8 @@ function App() {
 
   function commitDraftRow(typeId: EntityId, rowId: string) {
     if (!selectedGroup1 || !selectedGroup2) return
-    const type = data.settingTypes.find((item) => item.id === typeId)
+    const types = a4Mode === 'group2' ? coefficientTypesForName(data, selectedGroup2.name) : data.settingTypes
+    const type = types.find((item) => item.id === typeId)
     if (!type) return
     const draftKey = `${selectedGroup2.id}:${typeId}`
     const row = (draftRowsByType[draftKey] ?? []).find((item) => item.id === rowId)
@@ -1109,10 +1110,6 @@ function App() {
     runAction(() => {
       const normalizedListing = listingValues.join(', ')
       const group3 = createGroup3FromDefaults(type, makeId(), normalizedListing, row.point.trim())
-      if (!isProfileCoefficientFormula(type.formulaId)) {
-        group3.coefficientD = row.coefficientD.trim()
-        group3.coefficientT = row.coefficientT.trim()
-      }
       const nextData = addGroup3V2(data, selectedGroup1.id, selectedGroup2.id, group3)
       setData(nextData)
       const nextType = nextData.settingTypes.find((item) => item.id === typeId) ?? type
@@ -1143,7 +1140,8 @@ function App() {
 
     let committed = false
     runAction(() => {
-      const type = data.settingTypes.find((item) => item.id === group3.settingTypeId)
+      const types = a4Mode === 'group2' ? coefficientTypesForName(data, selectedGroup2.name) : data.settingTypes
+      const type = types.find((item) => item.id === group3.settingTypeId)
       if (!type) throw new Error('Không tìm thấy nhóm thiết lập của bản ghi này.')
       const listingValues = parseSettingNumberListV2(draft.listing, type.formulaId)
       const listing = listingValues.join(', ')
@@ -1156,10 +1154,9 @@ function App() {
         if (!profileKey) throw new Error(type.formulaId === 'da' || type.formulaId === 'db'
           ? 'ĐA/ĐB chỉ nhận danh sách toàn số 2 chữ số hoặc toàn số 3 chữ số.'
           : 'XA/XB yêu cầu đúng 2, 3, 4 hoặc 5 số trong ô Liệt kê.')
-        const rowPair = group3.coefficientsByCount?.[profileKey]
         const defaultPair = type.defaultCoefficientsByCount?.[profileKey]
-        const coefficientD = rowPair?.coefficientD || defaultPair?.coefficientD || ''
-        const coefficientT = rowPair?.coefficientT || defaultPair?.coefficientT || ''
+        const coefficientD = defaultPair?.coefficientD || ''
+        const coefficientT = defaultPair?.coefficientT || ''
         if (!coefficientD || !coefficientT) {
           const label = type.formulaId === 'da' || type.formulaId === 'db' ? `${profileKey} chữ số` : `${profileKey} số`
           throw new Error(`Chưa cài đủ hệ số Đánh/Trúng cho danh sách ${label} trong ${type.name}.`)
@@ -1167,16 +1164,12 @@ function App() {
         parseCoefficientTextV2(coefficientD, 'Hệ số Đánh')
         parseCoefficientTextV2(coefficientT, 'Hệ số Trúng')
       } else {
-        parseCoefficientTextV2(draft.coefficientD, 'Hệ số Đánh')
-        parseCoefficientTextV2(draft.coefficientT, 'Hệ số Trúng')
+        parseCoefficientTextV2(type.defaultCoefficientD ?? '', 'Hệ số Đánh')
+        parseCoefficientTextV2(type.defaultCoefficientT ?? '', 'Hệ số Trúng')
       }
       setData(updateGroup3V2(data, selectedGroup1.id, selectedGroup2.id, group3.id, {
         listing,
         point: draft.point.trim(),
-        ...(usesProfileCoefficients ? {} : {
-          coefficientD: draft.coefficientD.trim(),
-          coefficientT: draft.coefficientT.trim(),
-        }),
       }))
       committed = true
       setSavedRowDrafts((current) => {
@@ -1581,7 +1574,7 @@ function App() {
 
   return (
     <main onFocusCapture={(event) => { const input = event.target; if (input instanceof HTMLTextAreaElement || (input instanceof HTMLInputElement && ['text', 'password'].includes(input.type))) requestAnimationFrame(() => { if (document.activeElement === input) input.setSelectionRange(input.value.length, input.value.length) }) }} className={`${screen === 'page' ? 'app-shell app-shell-page' : 'app-shell'}${entryDock ? ' is-entry-docked' : ''}`}>
-      {nameCoefficientOpen && publisherAuthorized && selectedGroup2 && <NameCoefficients name={selectedGroup2.name} types={data.settingTypes.map(type=>({...type,...data.nameCoefficientTypes?.[group2NameKey(selectedGroup2.name)]?.find(t=>t.id===type.id),name:type.name}))} onClose={()=>{setNameCoefficientOpen(false);setPublisherAuthorized(false)}} onSave={types=>{setData(current=>({...current,nameCoefficientTypes:{...current.nameCoefficientTypes,[group2NameKey(selectedGroup2.name)]:types}}));setNameCoefficientOpen(false);setPublisherAuthorized(false)}} />}
+      {nameCoefficientOpen && publisherAuthorized && selectedGroup2 && <NameCoefficients name={selectedGroup2.name} types={coefficientTypesForName(data, selectedGroup2.name)} onClose={()=>{setNameCoefficientOpen(false);setPublisherAuthorized(false)}} onSave={types=>{if (!publisherAuthorized || publisherTarget !== 'name') return; setData(current=>({...current,nameCoefficientTypes:{...current.nameCoefficientTypes,[group2NameKey(selectedGroup2.name)]:types}}));setNameCoefficientOpen(false);setPublisherAuthorized(false)}} />}
       {publisherPromptOpen && <PublisherPrompt onClose={() => setPublisherPromptOpen(false)} onUnlock={() => { setPublisherPromptOpen(false); setPublisherAuthorized(true); if(publisherTarget==='name') setNameCoefficientOpen(true); else openTypesManagement() }} />}
       {screen === 'page' && (
         <>
@@ -1797,7 +1790,7 @@ function App() {
                       onSelect={chooseGroup2ByName}
                       onReorder={reorderGroup2Names}
                       onAdd={() => setShowNewGroupInput((value) => !value)}
-                      onEdit={() => {setPublisherTarget('name');setPublisherPromptOpen(true)}}
+                      onEdit={() => {if (!selectedGroup2) return; setNameCoefficientOpen(false); setPublisherAuthorized(false); setPublisherTarget('name');setPublisherPromptOpen(true)}}
                     />
                     {showNewGroupInput && (
                       <form className="inline-edit-form" onSubmit={addNewGroup2}>

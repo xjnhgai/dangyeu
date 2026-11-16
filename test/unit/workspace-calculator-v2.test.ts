@@ -22,6 +22,8 @@ function dataWithTwoGroups(drawData: Group1['drawData'] = { oneToSeven: ['0012',
   data = addGroup2V2(data, 'date-1', { kind: 'group2', id: 'g-obita', name: 'Obita', groups3: [] })
   data = addGroup3V2(data, 'date-1', 'g-obito', item('a', { listing: '12, 23' }))
   data = addGroup3V2(data, 'date-1', 'g-obita', item('b', { listing: '28', point: '3', coefficientD: '1', coefficientT: '2' }))
+  data.settingTypes[0].defaultCoefficientD = '3'
+  data.settingTypes[0].defaultCoefficientT = '5'
   return data
 }
 
@@ -72,14 +74,14 @@ describe('V2 workspace calculation', () => {
     expect(result.settingResults.get('a')?.d).toBe(12)
     expect(result.settingResults.get('a')?.t).toBe(30)
     expect(result.settingResults.get('a')?.matchingPairCount).toBe(3)
-    expect(result.settingResults.get('b')?.d).toBe(3)
+    expect(result.settingResults.get('b')?.d).toBe(9)
     expect(result.settingResults.get('b')?.t).toBe(0)
   })
 
   it('calculates only entries for an individually selected Group2', () => {
     const result = calculateWorkspaceForA4V2(dataWithTwoGroups(), { mode: 'group2', group1Id: 'date-1', group2Id: 'g-obita' })
     expect([...result.settingResults.keys()]).toEqual(['b'])
-    expect(result.summary.totals).toEqual({ settingCount: 1, d: 3, t: 0, difference: -3 })
+    expect(result.summary.totals).toEqual({ settingCount: 1, d: 9, t: 0, difference: -9 })
   })
 
   it('routes LB, LA, ĐA and ĐB through their own comparison scopes', () => {
@@ -88,6 +90,8 @@ describe('V2 workspace calculation', () => {
     data = addGroup3V2(data, 'date-1', 'g-obito', item('da', { settingTypeId: 'setting-type-3', listing: '12, 98, 65' }))
     data = addGroup3V2(data, 'date-1', 'g-obito', item('db', { settingTypeId: 'setting-type-4', listing: '12, 98, 65' }))
 
+    data.settingTypes[1].defaultCoefficientT = '5'
+    for (const type of data.settingTypes.filter(t => t.formulaId === 'da' || t.formulaId === 'db')) type.defaultCoefficientsByCount = { '2': {coefficientD:'3',coefficientT:'5'} }
     const result = calculateWorkspaceForA4V2(data, { mode: 'group2', group1Id: 'date-1', group2Id: 'g-obito' })
     expect(result.settingResults.get('la')?.matchingPairCount).toBe(2)
     expect(result.settingResults.get('la')?.t).toBe(20)
@@ -105,6 +109,8 @@ describe('V2 workspace calculation', () => {
     data = addGroup3V2(data, 'date-1', 'g-obito', item('da-3', { settingTypeId: daType.id, listing: '123 234 999', point: '10', coefficientsByCount: { '3': { coefficientD: '4', coefficientT: '5' } } }))
     data = addGroup3V2(data, 'date-1', 'g-obito', item('db-2', { settingTypeId: dbType.id, listing: '45 34 99', point: '10', coefficientsByCount: { '2': { coefficientD: '6', coefficientT: '7' } } }))
     data = addGroup3V2(data, 'date-1', 'g-obito', item('db-3', { settingTypeId: dbType.id, listing: '345 234 999', point: '10', coefficientsByCount: { '3': { coefficientD: '8', coefficientT: '9' } } }))
+    daType.defaultCoefficientsByCount = {'2':{coefficientD:'2',coefficientT:'3'},'3':{coefficientD:'4',coefficientT:'5'}}
+    dbType.defaultCoefficientsByCount = {'2':{coefficientD:'6',coefficientT:'7'},'3':{coefficientD:'8',coefficientT:'9'}}
     const result = calculateWorkspaceForA4V2(data, { mode: 'group2', group1Id: 'date-1', group2Id: 'g-obito' })
     expect(result.settingResults.get('da-2')?.d).toBe(20)
     expect(result.settingResults.get('da-2')?.t).toBe(30)
@@ -114,7 +120,7 @@ describe('V2 workspace calculation', () => {
     expect(result.settingResults.get('db-3')?.t).toBe(90)
   })
 
-  it('uses legacy row coefficients for DA/DB when profile coefficients are not configured', () => {
+  it('uses legacy catalog scalars for DA/DB when profile coefficients are absent', () => {
     let data = dataWithTwoGroups({ oneToSeven: ['12345'], gdb: '12345' })
     const daType = data.settingTypes.find((type) => type.formulaId === 'da')!
     const dbType = data.settingTypes.find((type) => type.formulaId === 'db')!
@@ -124,6 +130,8 @@ describe('V2 workspace calculation', () => {
     data = addGroup3V2(data, 'date-1', 'g-obito', item('db-legacy', {
       settingTypeId: dbType.id, listing: '45 34', point: '2', coefficientD: '5', coefficientT: '6',
     }))
+    daType.defaultCoefficientsByCount = undefined; daType.defaultCoefficientD='3'; daType.defaultCoefficientT='4'
+    dbType.defaultCoefficientsByCount = undefined; dbType.defaultCoefficientD='5'; dbType.defaultCoefficientT='6'
     const result = calculateWorkspaceForA4V2(data, { mode: 'group2', group1Id: 'date-1', group2Id: 'g-obito' })
     expect(result.settingResults.get('da-legacy')?.d).toBe(6)
     expect(result.settingResults.get('da-legacy')?.t).toBe(8)
@@ -142,6 +150,7 @@ describe('V2 workspace calculation', () => {
       coefficientT: '',
       coefficientsByCount: { '2': { coefficientD: '3', coefficientT: '' } },
     }))
+    daType.defaultCoefficientsByCount = {'2':{coefficientD:'3',coefficientT:''}}
     const result = calculateWorkspaceForA4V2(data, { mode: 'group2', group1Id: 'date-1', group2Id: 'g-obito' })
     expect(result.settingResults.get('da-no-gdb')?.d).toBe(6)
     expect(result.settingResults.get('da-no-gdb')?.t).toBeNull()
@@ -159,6 +168,8 @@ describe('V2 workspace calculation', () => {
       settingTypeId: xbType.id, listing: '00, 00, 67', point: '5',
       coefficientsByCount: { '3': { coefficientD: '4', coefficientT: '6' } },
     }))
+    xaType.defaultCoefficientsByCount = {'2':{coefficientD:'2',coefficientT:'3'}}
+    xbType.defaultCoefficientsByCount = {'3':{coefficientD:'4',coefficientT:'6'}}
     const result = calculateWorkspaceForA4V2(data, { mode: 'group2', group1Id: 'date-1', group2Id: 'g-obito' })
     expect(result.settingResults.get('xa-2')?.d).toBe(20)
     expect(result.settingResults.get('xa-2')?.t).toBe(30)
@@ -184,6 +195,7 @@ describe('V2 workspace calculation', () => {
         coefficientsByCount: { [String(count)]: coefficientPairs[String(count) as keyof typeof coefficientPairs] },
       }))
     }
+    xaType.defaultCoefficientsByCount = coefficientPairs
     const result = calculateWorkspaceForA4V2(data, { mode: 'group2', group1Id: 'date-1', group2Id: 'g-obito' })
     expect([2, 3, 4, 5].map((count) => result.settingResults.get(`xa-${count}`)?.d)).toEqual([20, 40, 60, 80])
     expect([2, 3, 4, 5].map((count) => result.settingResults.get(`xa-${count}`)?.t)).toEqual([30, 50, 70, 90])
@@ -213,6 +225,7 @@ describe('V2 workspace calculation', () => {
       listing: '12 23',
       coefficientsByCount: { '2': { coefficientD: '2', coefficientT: '' } },
     }))
+    xaType.defaultCoefficientsByCount = {'2':{coefficientD:'2',coefficientT:''}}
     expect(() => calculateWorkspaceForA4V2(data, { mode: 'group2', group1Id: 'date-1', group2Id: 'g-obito' })).toThrow(/hệ số Trúng/i)
   })
 
@@ -225,6 +238,7 @@ describe('V2 workspace calculation', () => {
   it('uses comma decimal coefficients', () => {
     let data = dataWithTwoGroups({ oneToSeven: ['0012'], gdb: '' })
     data = addGroup3V2(data, 'date-1', 'g-obito', item('comma', { listing: '12', point: '2', coefficientD: '1,5', coefficientT: '2,5' }))
+    data.settingTypes[0].defaultCoefficientD='1,5';data.settingTypes[0].defaultCoefficientT='2,5'
     const result = calculateWorkspaceForA4V2(data, { mode: 'group2', group1Id: 'date-1', group2Id: 'g-obito' })
     expect(result.settingResults.get('comma')?.d).toBe(3)
     expect(result.settingResults.get('comma')?.t).toBe(5)
@@ -260,8 +274,7 @@ describe('V2 workspace calculation', () => {
     expect(() => calculateWorkspaceForA4V2(invalidPoint, { mode: 'combined', group1Id: 'date-1' })).toThrow(WorkspaceCalculationV2Error)
 
     const invalidCoefficient: CalculationDataV2 = {
-      ...source,
-      groups1: source.groups1.map((g1) => ({ ...g1, groups2: g1.groups2.map((g2) => ({ ...g2, groups3: g2.groups3.map((g3) => g3.id === 'a' ? { ...g3, coefficientD: '-1' } : g3) })) })),
+      ...source, settingTypes: source.settingTypes.map(type=>type.id==='setting-type-1'?{...type,defaultCoefficientD:'-1'}:type),
     }
     expect(() => calculateWorkspaceForA4V2(invalidCoefficient, { mode: 'combined', group1Id: 'date-1' })).toThrow(WorkspaceCalculationV2Error)
   })

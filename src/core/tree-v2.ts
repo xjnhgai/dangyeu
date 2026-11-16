@@ -345,32 +345,11 @@ export function addGroup3V2(data: CalculationDataV2, group1Id: EntityId, group2I
   const next = structuredClone(group3)
   assertNewIdsAvailable(data, collectGroup3Ids(next))
   assertTypeExists(data, next.settingTypeId)
-  const updated = updateGroup2(data, group1Id, group2Id, (group2) => ({
+  // Adding a row cannot change publisher-protected catalog/name coefficients.
+  return updateGroup2(data, group1Id, group2Id, (group2) => ({
     ...group2,
     groups3: [...group2.groups3, next],
   }))
-  const typeIndex = updated.settingTypes.findIndex((item) => item.id === next.settingTypeId)
-  const settingTypes = [...updated.settingTypes]
-  const current = settingTypes[typeIndex]
-  const coefficientD = normalizeDefault(next.coefficientD)
-  const coefficientT = normalizeDefault(next.coefficientT)
-  settingTypes[typeIndex] = {
-    ...current,
-    defaultCoefficientD: coefficientD ?? current.defaultCoefficientD,
-    defaultCoefficientT: coefficientT ?? current.defaultCoefficientT,
-    ...(['da', 'db', 'xa', 'xb'].includes(current.formulaId)
-      ? {
-          defaultCoefficientsByCount: {
-            ...(current.defaultCoefficientsByCount ?? {}),
-            ...Object.fromEntries(Object.entries(next.coefficientsByCount ?? {}).map(([key, pair]) => [key, {
-              coefficientD: normalizeDefault(pair.coefficientD),
-              coefficientT: normalizeDefault(pair.coefficientT),
-            }])),
-          },
-        }
-      : {}),
-  }
-  return { ...updated, settingTypes }
 }
 
 export function updateGroup3V2(
