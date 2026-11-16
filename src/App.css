@@ -1338,23 +1338,7 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 
 
 
-/* Keep the calculated amounts in an identical value column under both labels. */
 
-.a4-v2-result-d,
-
-.a4-v2-result-t {
-
-   display: grid;
-
-   grid-template-columns: 6ch max-content;
-
-   align-items: baseline;
-
-}
-
-.a4-v2-result-d b,
-
-.a4-v2-result-t b { margin-left: 0; }
 
 
 

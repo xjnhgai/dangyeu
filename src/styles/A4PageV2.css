@@ -251,3 +251,22 @@
  .a4-v2-section-results b { text-align:left; font-variant-numeric:tabular-nums; }
  .a4-v2-total-area { position:absolute; left:10px; right:10px; bottom:8px; height:34px; min-height:0; margin:0; padding:0; }
 }
+
+/* Three explicit full-width rows: independent of stylesheet import order. */
+.a4-v2-section-results > span {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: 3em max-content;
+  align-items: baseline;
+  column-gap: .2ch;
+}
+.a4-v2-section-results > span > .a4-v2-result-label {
+  width: auto;
+  min-width: 0;
+}
+.a4-v2-section-results > span > b {
+  margin: 0;
+  text-align: left;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
