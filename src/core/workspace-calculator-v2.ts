@@ -83,15 +83,16 @@ export function parseOneToSevenTextV2(text: string): string[] {
 /** Parse 00–99 listings generally; ĐA/ĐB accept homogeneous 2-digit or 3-digit lists. */
 export function parseSettingNumberListV2(text: string, formulaId?: FormulaId): string[] {
   const values = splitSeparatedValuesV2(text)
+  const shorthand = formulaId === 'la' || formulaId === 'lb'
   const allowTwoOrThreeDigits = formulaId === 'da' || formulaId === 'db'
-  const invalid = values.find((value) => !(allowTwoOrThreeDigits ? VALID_SETTING_NUMBER_DA_DB : VALID_SETTING_NUMBER).test(value))
+  const invalid = values.find((value) => !((allowTwoOrThreeDigits || shorthand) ? VALID_SETTING_NUMBER_DA_DB : VALID_SETTING_NUMBER).test(value))
   const mixedWidths = allowTwoOrThreeDigits && new Set(values.map((value) => value.length)).size > 1
   if (invalid !== undefined || mixedWidths) {
     throw new WorkspaceCalculationV2Error('INVALID_LISTING', allowTwoOrThreeDigits
       ? 'ĐA/ĐB chỉ nhận danh sách toàn số 2 chữ số hoặc toàn số 3 chữ số; không được trộn hai loại.'
       : `Mục ${values.indexOf(invalid!) + 1}: "${invalid}" không hợp lệ (${invalid?.length} ký tự). ${formulaId?.toUpperCase() ?? "Thiết lập"} cần đúng 2 chữ số từ 00 đến 99, ví dụ 01, 12, 99. Tách các số bằng dấu phẩy, khoảng trắng hoặc xuống dòng; không nhập liền như 011299.`)
   }
-  return values
+  return shorthand ? values.flatMap((v) => v.length === 3 ? [v.slice(0, 2), v.slice(1)] : [v]) : values
 }
 
 export function isProfileCoefficientFormula(formulaId: FormulaId): boolean {
@@ -227,7 +228,11 @@ export function calculateWorkspaceForA4V2(
 
   const settingResults = new Map<EntityId, SettingCalculationResult>()
   for (const entry of projection.entries) {
-    settingResults.set(entry.group3.id, calculateGroup3(entry.group3, projection.group1.drawData, data))
+    const name = projection.group1.groups2.find(g=>g.id===entry.group2Id)?.name.trim().normalize('NFC').toLocaleLowerCase('vi-VN') ?? ''
+    const types = selection.mode === 'group2' ? data.nameCoefficientTypes?.[name] ?? data.settingTypes : data.settingTypes
+    const type = types.find(t=>t.id===entry.group3.settingTypeId) ?? entry.settingType
+    const row = {...entry.group3, coefficientD:type.defaultCoefficientD??'',coefficientT:type.defaultCoefficientT??'',coefficientsByCount:type.defaultCoefficientsByCount as Group3['coefficientsByCount']}
+    settingResults.set(entry.group3.id, calculateGroup3(row, projection.group1.drawData, data))
   }
   const summary = buildA4SummaryV2(projection, settingResults)
   return { projection, settingResults, summary }

@@ -1,3 +1,6 @@
+import NameCoefficients from './components/NameCoefficients'
+import AllEditor from './components/AllEditor'
+import { allConfig } from './core/all-input'
 import { resultNumbers } from './core/result-input'
 import { useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
@@ -140,12 +143,14 @@ function group2NameKey(name: string): string {
   return name.trim().normalize('NFC').toLocaleLowerCase('vi-VN')
 }
 
-function SettingTypePicker({ types, groups3, activeTypeId, onSelect, onReorder, onEdit, hidden, onHidden }: {
+function SettingTypePicker({ types, groups3, activeTypeId, onSelect, onReorder, onEdit, hidden, onHidden, onAll, allSelected }: {
   types: readonly SettingTypeDefinition[]; groups3: readonly Group3[]; activeTypeId: string | null
   onSelect: (id: string) => void; onReorder: (source: string, target: string) => void; onEdit: () => void
+  allSelected: boolean
+  onAll: () => void
   hidden: string[]; onHidden: (ids: string[]) => void
 }) {
-  return <DrawerPicker kind="type" items={types.map((type) => ({ id: type.id, label: type.name, configured: groups3.some((row) => row.settingTypeId === type.id) }))} selected={activeTypeId ?? ''} hidden={hidden} onHidden={onHidden} onSelect={onSelect} onReorder={onReorder} listLabel="Danh sách nhóm thiết lập khác" actions={<><span className="drawer-action-spacer" /><button className="icon-button chip-edit-button" type="button" onClick={onEdit} aria-label="Cài đặt nhóm thiết lập"><AppIcon name="settings" /></button></>} />
+  return <DrawerPicker kind="type" items={types.map((type) => ({ id: type.id, label: type.name, configured: groups3.some((row) => row.settingTypeId === type.id) }))} selected={allSelected ? '' : activeTypeId ?? ''} hidden={hidden} onHidden={onHidden} onSelect={onSelect} onReorder={onReorder} listLabel="Danh sách nhóm thiết lập khác" actions={<><button aria-pressed={allSelected} className={`drawer-action-spacer all-trigger choice-chip setting-type-chip${allSelected ? " is-selected" : groups3.some(row=>row.allSourceId) ? " is-configured" : ""}`} type="button" onClick={onAll} aria-label="Mở All">All</button><button className="icon-button chip-edit-button" type="button" onClick={onEdit} aria-label="Cài đặt nhóm thiết lập"><AppIcon name="settings" /></button></>} />
 }
 
 function Group2NamePicker({ names, configuredNameKeys, activeNameKey, onSelect, onReorder, onAdd, onEdit, hidden, onHidden }: {
@@ -156,7 +161,7 @@ function Group2NamePicker({ names, configuredNameKeys, activeNameKey, onSelect, 
   return <DrawerPicker kind="group2" items={names.map((name) => ({ id: group2NameKey(name), label: name, configured: configuredNameKeys.has(group2NameKey(name)) }))} selected={activeNameKey} hidden={hidden} onHidden={onHidden}
     onSelect={(id) => { const name = names.find((item) => group2NameKey(item) === id); if (name) onSelect(name) }}
     onReorder={(source, target) => { const a = names.find((name) => group2NameKey(name) === source); const b = names.find((name) => group2NameKey(name) === target); if (a && b) onReorder(a, b) }}
-    listLabel="Danh sách tên nhóm còn lại" actions={<><button className="choice-chip add-chip group2-add-trigger" type="button" onClick={onAdd} aria-label="Tạo tên nhóm mới"><AppIcon name="plus" /></button><button className="icon-button chip-edit-button" type="button" onClick={onEdit} aria-label="Xóa nhóm"><AppIcon name="trash" /></button></>} />
+    listLabel="Danh sách tên nhóm còn lại" actions={<><button className="choice-chip add-chip group2-add-trigger" type="button" onClick={onAdd} aria-label="Tạo tên nhóm mới"><AppIcon name="plus" /></button><button className="icon-button chip-edit-button" type="button" onClick={onEdit} aria-label="Cài đặt hệ số theo tên"><AppIcon name="settings" /></button></>} />
 }
 
 function dateSortValue(label: string): number {
@@ -239,6 +244,7 @@ function isDraftComplete(row: DraftRow, type: SettingTypeDefinition): boolean {
 
 
 function App() {
+  const [allOpen, setAllOpen] = useState(false)
   const { preferences } = useAppPreferences()
   const [retentionBusy, setRetentionBusy] = useState(false)
   const retentionRunningRef = useRef(false)
@@ -308,6 +314,8 @@ function App() {
     '4': { coefficientD: '', coefficientT: '' },
     '5': { coefficientD: '', coefficientT: '' },
   })
+  const [nameCoefficientOpen,setNameCoefficientOpen]=useState(false)
+  const [publisherTarget,setPublisherTarget]=useState<'types'|'name'>('types')
   const [publisherPromptOpen, setPublisherPromptOpen] = useState(false)
   const [publisherAuthorized, setPublisherAuthorized] = useState(false)
   const [entryDock, setEntryDock] = useState<EntryTarget | null>(null)
@@ -317,7 +325,7 @@ function App() {
   const [draggingTypeId, setDraggingTypeId] = useState<EntityId | null>(null)
   const [typeDropTargetId, setTypeDropTargetId] = useState<EntityId | null>(null)
   useEffect(() => {
-    const closePrivatePanels = () => { setPublisherAuthorized(false); setPublisherPromptOpen(false); setEntryDock(null) }
+    const closePrivatePanels = () => { setPublisherAuthorized(false); setPublisherPromptOpen(false); setEntryDock(null); setAllOpen(false); setNameCoefficientOpen(false) }
     const onHidden = () => { if (document.visibilityState === 'hidden') closePrivatePanels() }
     document.addEventListener('visibilitychange', onHidden)
     window.addEventListener('pagehide', closePrivatePanels)
@@ -708,6 +716,7 @@ function App() {
   }, [draftListingFocusToken, activeSettingTypeId, selectedGroup2Id, selectedDraftRows.length])
 
   function returnToLibrary() {
+    setAllOpen(false)
     setEntryDock(null)
     if (activePanel === 'results' && !persistDrawDataDraft()) return
     // Keep the current A4 and editor state. The library view is only a screen
@@ -791,6 +800,7 @@ function App() {
   }
 
   function openDate(group1Id: EntityId) {
+    setAllOpen(false)
     const resumeSameA4 = selectedGroup1Id === group1Id
     resetPageToWidthFit()
     setSelectedGroup1Id(group1Id)
@@ -1039,6 +1049,7 @@ function App() {
   }
 
   function selectSettingType(typeId: EntityId) {
+    setAllOpen(false)
     const type = data.settingTypes.find((item) => item.id === typeId)
     if (!type || !selectedGroup2) return
     setActiveSettingTypeId(typeId)
@@ -1047,7 +1058,6 @@ function App() {
       if (current[draftKey]?.length) return current
       return { ...current, [draftKey]: [createDraftRow(type)] }
     })
-    setDraftListingFocusToken((current) => current + 1)
     clearFeedback()
   }
 
@@ -1115,6 +1125,7 @@ function App() {
   }
 
   function updateSavedGroup3(group3: Group3, field: keyof SavedRowDraft, value: string) {
+    if (group3.allSourceId) return
     const previous = savedRowDrafts[group3.id] ?? {
       listing: group3.listing,
       point: group3.point,
@@ -1125,6 +1136,7 @@ function App() {
   }
 
   function commitSavedGroup3(group3: Group3) {
+    if (group3.allSourceId) return true
     if (!selectedGroup1 || !selectedGroup2) return false
     const draft = savedRowDrafts[group3.id]
     if (!draft) return true
@@ -1177,6 +1189,7 @@ function App() {
   }
 
   function removeGroup3(group3Id: EntityId) {
+    if (selectedGroup2?.groups3.find(row=>row.id===group3Id)?.allSourceId) return
     if (!selectedGroup1 || !selectedGroup2) return
     runAction(() => setData(deleteGroup3V2(data, selectedGroup1.id, selectedGroup2.id, group3Id)))
   }
@@ -1499,11 +1512,15 @@ function App() {
       const exportWorkspace = exportCalculationEnabled
         ? calculateWorkspaceForA4V2(exportData, a4Selection)
         : undefined
+      await new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())))
+      const paper = document.querySelector<HTMLElement>('.a4-v2-page')
+      if (!paper) throw new Error('Không tìm thấy trang giấy để xuất.')
       const files = await exportA4Images(
         exportProjection,
         exportWorkspace?.summary,
         exportWorkspace?.settingResults ?? EMPTY_RESULTS,
         exportCalculationEnabled,
+        paper,
       )
       const shareData = { files, title: `A4-${selectedGroup1?.dateLabel ?? 'export'}` }
       if (navigator.share && navigator.canShare?.(shareData)) {
@@ -1532,6 +1549,8 @@ function App() {
 
   function openEntryDock(mode: 'saved' | 'draft', rowId: string, typeId: string, field: 'listing' | 'point' = 'listing') {
     if (!selectedGroup1 || !selectedGroup2) return
+    if (selectedGroup2.groups3.find(row=>row.id===rowId)?.allSourceId) { setAllOpen(true); return }
+    setAllOpen(false)
     clearFeedback()
     if (!entryDock) setPaperFitRequest((value) => value + 1)
     setEntryDock({ mode, rowId, typeId, group1Id: selectedGroup1.id, group2Id: selectedGroup2.id, field })
@@ -1562,7 +1581,8 @@ function App() {
 
   return (
     <main onFocusCapture={(event) => { const input = event.target; if (input instanceof HTMLTextAreaElement || (input instanceof HTMLInputElement && ['text', 'password'].includes(input.type))) requestAnimationFrame(() => { if (document.activeElement === input) input.setSelectionRange(input.value.length, input.value.length) }) }} className={`${screen === 'page' ? 'app-shell app-shell-page' : 'app-shell'}${entryDock ? ' is-entry-docked' : ''}`}>
-      {publisherPromptOpen && <PublisherPrompt onClose={() => setPublisherPromptOpen(false)} onUnlock={() => { setPublisherPromptOpen(false); setPublisherAuthorized(true); openTypesManagement() }} />}
+      {nameCoefficientOpen && publisherAuthorized && selectedGroup2 && <NameCoefficients name={selectedGroup2.name} types={data.settingTypes.map(type=>({...type,...data.nameCoefficientTypes?.[group2NameKey(selectedGroup2.name)]?.find(t=>t.id===type.id),name:type.name}))} onClose={()=>{setNameCoefficientOpen(false);setPublisherAuthorized(false)}} onSave={types=>{setData(current=>({...current,nameCoefficientTypes:{...current.nameCoefficientTypes,[group2NameKey(selectedGroup2.name)]:types}}));setNameCoefficientOpen(false);setPublisherAuthorized(false)}} />}
+      {publisherPromptOpen && <PublisherPrompt onClose={() => setPublisherPromptOpen(false)} onUnlock={() => { setPublisherPromptOpen(false); setPublisherAuthorized(true); if(publisherTarget==='name') setNameCoefficientOpen(true); else openTypesManagement() }} />}
       {screen === 'page' && (
         <>
           <header className="app-header page-desktop-header">
@@ -1765,7 +1785,7 @@ function App() {
                 <div className="sheet-content edit-flow">
                   <div className="compact-date-row">
                     <strong>{selectedGroup1.dateLabel}</strong>
-                    <button className="icon-button trailing-edit-icon" type="button" onClick={() => { setDateDraft(dateInputFromLabel(selectedGroup1.dateLabel)); setManagementPanel('date') }} aria-label="Sửa ngày"><AppIcon name="edit" /></button>
+                    <button className="icon-button trailing-edit-icon" type="button" onClick={() => { setDateDraft(dateInputFromLabel(selectedGroup1.dateLabel)); setManagementPanel('date') }} aria-label="Sửa ngày"><AppIcon name="edit" /></button><button className="icon-button" aria-label="Xóa nhóm" onClick={()=>setManagementPanel('groups')}><AppIcon name="trash" /></button>
                   </div>
 
                   <div className="compact-section group2-chip-area">
@@ -1777,7 +1797,7 @@ function App() {
                       onSelect={chooseGroup2ByName}
                       onReorder={reorderGroup2Names}
                       onAdd={() => setShowNewGroupInput((value) => !value)}
-                      onEdit={() => setManagementPanel('groups')}
+                      onEdit={() => {setPublisherTarget('name');setPublisherPromptOpen(true)}}
                     />
                     {showNewGroupInput && (
                       <form className="inline-edit-form" onSubmit={addNewGroup2}>
@@ -1796,13 +1816,13 @@ function App() {
                   {selectedGroup2 && (
                     <>
                       <div className="compact-section">
-                        <SettingTypePicker
+                        <SettingTypePicker allSelected={allOpen} onAll={() => { setEntryDock(null); setAllOpen(true); setPaperFitRequest(v=>v+1) }}
                           types={data.settingTypes}
                           groups3={selectedGroup2.groups3}
                           activeTypeId={activeSettingTypeId}
                           onSelect={selectSettingType}
                           onReorder={(source, target) => { const index = data.settingTypes.findIndex((type) => type.id === target); if (index >= 0) setData((current) => reorderSettingType(current, source, index)) }}
-                          onEdit={() => { setPublisherAuthorized(false); setPublisherPromptOpen(true) }}
+                          onEdit={() => { setPublisherTarget('types'); setPublisherAuthorized(false); setPublisherPromptOpen(true) }}
                           hidden={hiddenSettingTypeIds} onHidden={setHiddenSettingTypeIds}
                         />
                       </div>
@@ -1818,7 +1838,7 @@ function App() {
                             }
                             return (
                               <div
-                                className="setting-row"
+                                className={`setting-row${group3.allSourceId ? " from-all" : ""}`}
                                 key={group3.id}
                                 onBlur={(event) => {
                                   if (entryDock) return
@@ -1827,9 +1847,10 @@ function App() {
                                 }}
                               >
                                 <div className="setting-line">
+                                {group3.allSourceId ? <><ListingInput value={group3.listing} onChange={()=>{}} onFocus={()=>setAllOpen(true)} label="Liệt kê" /><input className="point-input" readOnly value={group3.point} onFocus={()=>setAllOpen(true)} aria-label="Điểm" /><span className="all-delete-spacer" /></> : <>
                                 <ListingInput onFocus={() => openEntryDock('saved', group3.id, activeSettingType.id)} value={currentDraft.listing} onChange={(value) => updateSavedGroup3(group3, 'listing', value)} onBlur={() => { try { const savedType = data.settingTypes.find((item) => item.id === group3.settingTypeId); updateSavedGroup3(group3, 'listing', parseSettingNumberListV2(currentDraft.listing, savedType?.formulaId).join(', ')) } catch { /* Keep invalid input visible. */ } }} label="Liệt kê" />
                                   <input onFocus={() => openEntryDock('saved', group3.id, activeSettingType.id, 'point')} className="point-input" readOnly value={currentDraft.point} onChange={(event) => updateSavedGroup3(group3, 'point', event.target.value)} placeholder="Điểm" aria-label="Điểm" inputMode="numeric" />
-                                  <button className="icon-button danger-icon" type="button" onClick={() => removeGroup3(group3.id)} aria-label="Xóa thiết lập">×</button>
+                                  <button className="icon-button danger-icon" type="button" onClick={() => removeGroup3(group3.id)} aria-label="Xóa thiết lập">×</button></>}
                                 </div>
                               </div>
                             )
@@ -1918,6 +1939,9 @@ function App() {
                         <div className="type-name-row">
                           <input ref={typeNameInputRef} className="type-name-input" aria-label="Tên thiết lập" value={editingTypeName} onChange={(event) => setEditingTypeName(event.target.value)} />
 
+                        </div>
+                        <div className="all-config">
+                          {([['allAliases','Tên khác',allConfig(editingType).aliases],['allPointMarkers','Ký tự xác định điểm',allConfig(editingType).markers],['allSeparators','Ký tự phân tách',allConfig(editingType).separators]] as const).map(([field,label,value])=><label key={field}>{label}<input aria-label={label} value={value} onChange={event=>setData(current=>({...current,settingTypes:current.settingTypes.map(t=>t.id===editingType.id?{...t,[field]:event.target.value}:t)}))}/></label>)}
                         </div>
                         <div className="inline-type-coefficients">
                         {isProfileCoefficientFormula(editingType.formulaId) ? (
@@ -2017,6 +2041,7 @@ function App() {
         <section className="home-screen"><p>Không tìm thấy A4.</p></section>
       )}
 
+      {allOpen && selectedGroup2 && selectedGroup1 && screen === 'page' && <AllEditor key={selectedGroup2.id} group={selectedGroup2} types={data.settingTypes} onClose={()=>setAllOpen(false)} onChange={group=>setData(current=>({...current,groups1:current.groups1.map(g1=>g1.id===selectedGroup1.id?{...g1,groups2:g1.groups2.map(g2=>g2.id===group.id?group:g2)}:g1)}))} />}
       {entryDock && entryDockRow && entryDockType && screen === 'page' && <EntryDock
         formulaId={entryDockType.formulaId} rowId={entryDock.rowId} initialField={entryDock.field}
         title={`${entryDockGroup?.name ?? ''} · ${entryDockType.name}`}

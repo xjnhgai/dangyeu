@@ -1,3 +1,4 @@
+import { exportPaper } from './export-paper'
 import type { A4ProjectionV2 } from './a4-v2'
 import type { SettingCalculationResult } from './calculation'
 import type { A4SummaryV2 } from './summary-v2'
@@ -176,7 +177,9 @@ export async function exportA4Images(
   summary: A4SummaryV2 | undefined,
   results: ReadonlyMap<string, SettingCalculationResult>,
   showCalculation: boolean,
+  paper?: HTMLElement,
 ): Promise<File[]> {
+  if (paper) return exportPaper(paper, `A4-${projection.group1.dateLabel.replaceAll('/', '-')}.jpg`)
   const pages: ExportPage[] = [createPage(projection)]
   let page = pages[0]!
 

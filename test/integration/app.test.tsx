@@ -332,7 +332,7 @@ describe('application integration', () => {
     fireEvent.focus(screen.getByLabelText('Liệt kê'))
     const input = screen.getByLabelText('Liệt kê đang nhập') as HTMLTextAreaElement
     const alert = vi.spyOn(window, 'alert').mockImplementation(() => {})
-    fireEvent.change(input, { target: { value: '123' } })
+    fireEvent.change(input, { target: { value: '1234' } })
     expect(alert).toHaveBeenCalledWith('Nhập sai số')
     expect(input.value).toBe('00')
     const dock = screen.getByLabelText('Nhập trực tiếp trên A4')
@@ -372,7 +372,7 @@ describe('application integration', () => {
     expect(paper.querySelector('.paper-back')).not.toBeNull()
     expect(document.querySelector('.mobile-page-controls')).toBeNull()
   })
-  it('uses the custom keypad with delete left, comma right and independent point input', async () => {
+  it('uses the custom keypad with comma left, delete right and independent point input', async () => {
     await saveCalculationWorkspace(fixture())
     await openApp()
     fireEvent.click(await screen.findByRole('button', { name: /Mở A4 ngày/ }))
@@ -384,7 +384,7 @@ describe('application integration', () => {
     expect(point.readOnly).toBe(true)
     const keypad = screen.getByRole('group', { name: 'Bàn phím số' })
     const keys = [...keypad.querySelectorAll('button')]
-    expect(keys.slice(-3).map((button) => button.textContent)).toEqual(['⌫', '0', ','])
+    expect(keys.slice(-3).map((button) => button.textContent)).toEqual([',', '0', '⌫'])
     fireEvent.click(screen.getByRole('button', { name: 'Xóa một ký tự' }))
     fireEvent.click(screen.getByRole('button', { name: 'Xóa một ký tự' }))
     for (const key of ['1', '2', ',', '3', '4']) fireEvent.click(screen.getByRole('button', { name: key === ',' ? 'Dấu phẩy' : `Nhập ${key}` }))

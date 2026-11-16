@@ -1,0 +1,50 @@
+import { describe,it,expect } from 'vitest'
+import { parseAll, applyAll, deleteAll } from '../../src/core/all-input'
+import { createCalculationDataV2, createGroup3FromDefaults } from '../../src/core/tree-v2'
+import { parseSettingNumberListV2 } from '../../src/core/workspace-calculator-v2'
+import type { Group2 } from '../../src/core/models-v2'
+const types=createCalculationDataV2().settingTypes
+const sample='Đề A 171.262.20n 121.676.10n .đề b 050.30n 00.55.10n .lô b 070.5đ 050.4đ 595.141.3đ xiên 14.07.05.40n 14.70.05.40n 14.50.70.30n 14.50.07.30n 14.59.05.30n 14.95.05.30n 07.05.59.30n 05.70.59.30n 95.05.70.30n 95.05.07.30n 59.50.07.20n 59.50.70.20n 95.50.70.20n 95.07.50.20n .07.05.30n 70.50.30n 70.05.30n 59.05.30n 95.05.30n 07.59.30n 70.59.30n 95.70.30n 07.95.30n 07.50.30n'
+describe('All records',()=>{
+ it('parses the full supplied sample and expands only LA/LB',()=>{
+  const rows=parseAll(sample,types)
+  expect(rows).toHaveLength(31)
+  expect(rows[0].listing).toBe('171, 262')
+  expect(rows[4].listing).toBe('07, 70')
+  expect(rows[4].point).toBe('5')
+  expect(rows[6].listing).toBe('59, 95, 14, 41')
+  expect(parseAll(sample.toUpperCase(),types).map(r=>[r.typeId,r.listing,r.point])).toEqual(rows.map(r=>[r.typeId,r.listing,r.point]))
+ })
+ it('rejects duplicates, ambiguous names, unknown text, incomplete tails atomically',()=>{
+  expect(()=>parseAll('lô b 070.5đ 111.5đ',types)).toThrow('lô b 111.5đ')
+  expect(()=>parseAll('lô b 070.5đ xyz',types)).toThrow()
+  expect(()=>parseAll('lô b 070',types)).toThrow()
+  expect(()=>parseAll('lô b 070.5đ',types.map(t=>({...t,allAliases:'same'})))).toThrow('trùng')
+ })
+ it('reports unknown text and unconfigured separators without skipping them',()=>{
+  for(const raw of ['abc lô b 070.5đ','lô b 070.5đ abc','lô b 07,70.5đ','abc']) expect(()=>parseAll(raw,types)).toThrow(/Kiểm tra:.*(?:abc|07,70)/)
+ })
+ it('supports configured aliases, markers and separators',()=>{
+  const custom=types.map(t=>t.formulaId==='lb'?{...t,allAliases:'LBe%LBo%LB i',allPointMarkers:'p%đ',allSeparators:'-%.'}:t)
+  expect(parseAll('lB    i 070-5P',custom)[0]).toMatchObject({listing:'07, 70',point:'5'})
+ })
+ it('adds multiple All records and only replaces/deletes its own generated rows',()=>{
+  let sequence=0;const id=()=>String(++sequence)
+  const manual=createGroup3FromDefaults(types[0],'manual','12','1')
+  const group:Group2={kind:'group2',id:'g',name:'A',groups3:[manual]}
+  const first=applyAll(group,types,'a','lô b 070.5đ',id)
+  const second=applyAll(first,types,'b','lô b 050.4đ',id)
+  const edited=applyAll(second,types,'a','lô b 595.3đ',id)
+  expect(edited.groups3).toHaveLength(3)
+  expect(edited.groups3[0]).toEqual(manual)
+  expect(edited.groups3.find(r=>r.allSourceId==='b')?.listing).toBe('05, 50')
+  expect(edited.allEntries).toHaveLength(2)
+  expect(deleteAll(edited,'a').groups3).toHaveLength(2)
+  expect(()=>applyAll(edited,types,'a','lô b 111.5đ',id)).toThrow()
+  expect(edited.groups3).toHaveLength(3)
+ })
+ it('accepts mixed 2/3-digit shorthand only for LA/LB',()=>{
+  for(const formula of ['la','lb'] as const) expect(parseSettingNumberListV2('12 070 595',formula)).toEqual(['12','07','70','59','95'])
+  expect(()=>parseSettingNumberListV2('12 070','ca')).toThrow()
+ })
+})

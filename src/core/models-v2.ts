@@ -20,6 +20,9 @@ export interface CoefficientPairText {
 /** Global catalog definition; it is intentionally outside the three-level tree. */
 export interface SettingTypeDefinition {
   id: EntityId
+  allAliases?: string
+  allPointMarkers?: string
+  allSeparators?: string
   formulaId: FormulaId
   name: string
   defaultCoefficientD: NumericText | null
@@ -30,6 +33,7 @@ export interface SettingTypeDefinition {
 
 /** One concrete setting entry. Group3 directly owns all entered values. */
 export interface Group3 {
+  allSourceId?: string
   kind: 'group3'
   id: EntityId
   settingTypeId: EntityId
@@ -43,6 +47,7 @@ export interface Group3 {
 
 /** Group2: a named group within one date. */
 export interface Group2 {
+  allEntries?: { id: string; text: string }[]
   kind: 'group2'
   id: EntityId
   name: string
@@ -64,6 +69,7 @@ export type A4PageSelectionV2 =
   | { mode: 'group2'; group1Id: EntityId; group2Id: EntityId }
 
 export interface CalculationDataV2 {
+  nameCoefficientTypes?: Record<string, SettingTypeDefinition[]>
   schemaVersion: 2
   settingTypes: SettingTypeDefinition[]
   groups1: Group1[]

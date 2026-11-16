@@ -239,3 +239,17 @@
 @media (max-width: 760px) {
  .paper-back { display: grid; place-items: center; position: absolute; top: 5px; left: 5px; z-index: 2; width: 30px; height: 30px; padding: 0; border: 0; background: transparent; color: #34465b; font-size: 27px; line-height: 1; }
 }
+
+@media screen {
+ .a4-v2-sections { grid-template-columns:repeat(auto-fill, 14.88mm); row-gap:14px; }
+ .a4-v2-section-results { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); column-gap:1px; font-size:6.5px; }
+ .a4-v2-result-point,.a4-v2-result-d,.a4-v2-result-t { display:flex; flex-direction:column; align-items:flex-start; gap:2px; }
+ .a4-v2-result-label { white-space:nowrap; }
+ .continuation-start { grid-column:1; }
+}
+
+@media screen {
+ .a4-v2-section-results { display:grid; grid-template-columns:max-content max-content; gap:0 .2ch; }
+ .a4-v2-result-point,.a4-v2-result-d,.a4-v2-result-t { display:contents; }
+ .a4-v2-result-label { width:auto; }
+}

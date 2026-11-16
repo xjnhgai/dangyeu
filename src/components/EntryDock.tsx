@@ -44,7 +44,7 @@ export default function EntryDock({ rowId, title, listing, point, saved, onListi
   function changeListing(raw: string, validateCompleted = false) {
     const next = cleanListingInput(raw)
     const values = next.trim().split(/[\s,]+/).filter(Boolean)
-    const width = formulaId === 'da' || formulaId === 'db' ? 3 : 2
+    const width = ['da', 'db', 'la', 'lb'].includes(formulaId) ? 3 : 2
     const completed = /[\s,]$/.test(next) ? values : values.slice(0, -1)
     if (values.some((value) => value.length > width) || (validateCompleted && completed.some((value) => value.length < 2))) { window.alert('Nhập sai số'); return false }
     onListing(next)
@@ -90,7 +90,7 @@ export default function EntryDock({ rowId, title, listing, point, saved, onListi
       <button className="button-primary" type="button" onClick={onCommit}>{saved ? 'Lưu' : 'Thêm'}</button>
     </div>
     <div className="entry-keypad" role="group" aria-label="Bàn phím số">
-      {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'Backspace', '0', ','].map((key) => <button
+      {['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', 'Backspace'].map((key) => <button
         key={key} type="button" disabled={key === ',' && field === 'point'}
         aria-label={key === 'Backspace' ? 'Xóa một ký tự' : key === ',' ? 'Dấu phẩy' : `Nhập ${key}`}
         onPointerDown={(event) => event.preventDefault()} onClick={() => pressKey(key)}

@@ -81,7 +81,7 @@ export default function ResultsEditor({ oneToSeven, gdb, onOneToSeven, onGdb, on
     </div>
     {pasteError && <p className="settings-error" role="status">{pasteError}</p>}
     <div className="entry-keypad results-keypad" role="group" aria-label="Bàn phím kết quả">
-      {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'Backspace', '0', ','].map((key) => <button type="button" key={key} disabled={key === ',' && field === 'gdb'} aria-label={key === 'Backspace' ? 'Xóa ký tự kết quả' : key === ',' ? 'Phân cách kết quả' : `Nhập kết quả ${key}`} onPointerDown={(event) => event.preventDefault()} onClick={() => insert(key)}>{key === 'Backspace' ? '⌫' : key}</button>)}
+      {['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', 'Backspace'].map((key) => <button type="button" key={key} disabled={key === ',' && field === 'gdb'} aria-label={key === 'Backspace' ? 'Xóa ký tự kết quả' : key === ',' ? 'Phân cách kết quả' : `Nhập kết quả ${key}`} onPointerDown={(event) => event.preventDefault()} onClick={() => insert(key)}>{key === 'Backspace' ? '⌫' : key}</button>)}
     </div>
     <div className="results-footer"><button className={`calculation-toggle${enabled ? ' is-on' : ''}`} type="button" onClick={onToggle} aria-pressed={enabled}><AppIcon name="calculator" /><span>Tính Toán</span><span className="calculation-status" aria-hidden="true">{enabled ? 'Bật' : 'Tắt'}</span></button></div>
   </div>

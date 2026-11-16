@@ -1,0 +1,62 @@
+import type { Group2, SettingTypeDefinition } from './models-v2'
+import { parseSettingNumberListV2, parsePointTextV2, getCoefficientProfileKey, isProfileCoefficientFormula } from './workspace-calculator-v2'
+import { createGroup3FromDefaults } from './tree-v2'
+const defaults: Record<string, string> = { la: 'lô a', lb: 'lô b', da: 'đề a', db: 'đề b', xa: 'xiên a', xb: 'xiên b%xiên', ca: 'càng a', cb: 'càng b' }
+export const allConfig = (type: SettingTypeDefinition) => ({ aliases: type.allAliases ?? defaults[type.formulaId] ?? '', markers: type.allPointMarkers ?? 'n%đ', separators: type.allSeparators ?? '.' })
+const parts = (s: string) => s.split('%').map(v => v.trim().replace(/\s+/g, ' ').normalize('NFC').toLocaleLowerCase('vi')).filter(Boolean)
+const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+export interface AllRow { typeId: string; listing: string; point: string; source: string }
+export function parseAll(text: string, types: readonly SettingTypeDefinition[]): AllRow[] {
+  const names = new Map<string, SettingTypeDefinition>()
+  for (const type of types) for (const name of parts(`${type.name}%${allConfig(type).aliases}`)) {
+    if (names.has(name) && names.get(name)!.id !== type.id) throw new Error(`Tên khác bị trùng: ${name}`)
+    names.set(name, type)
+  }
+  const source = text.normalize('NFC').replace(/\s+/g, ' ')
+  const pattern = new RegExp(`(?<![\\p{L}\\d])(?:${[...names.keys()].sort((a,b) => b.length-a.length).map(esc).join('|')})(?!\\p{L})`, 'giu')
+  const matches = [...source.matchAll(pattern)]
+  if (!matches.length) throw new Error(`Kiểm tra: ${source.trim()}`)
+  const firstType = names.get(matches[0][0].toLocaleLowerCase('vi'))!
+  const prefixSeparators = parts(allConfig(firstType).separators).map(esc)
+  const prefixPattern = new RegExp(`(?:\\s${prefixSeparators.length ? '|' + prefixSeparators.join('|') : ''})+`, 'u')
+  const prefix = source.slice(0, matches[0].index)
+  if (prefix.split(prefixPattern).filter(Boolean).length) throw new Error(`Kiểm tra: ${prefix.trim()}`)
+  const rows: AllRow[] = []
+  for (let i=0; i<matches.length; i++) {
+    const match = matches[i]; const type = names.get(match[0].toLocaleLowerCase('vi'))!
+    const config = allConfig(type)
+    const markers = parts(config.markers)
+    const separators = parts(config.separators)
+    if (!markers.length || !separators.length) throw new Error(`Hãy cài ký tự điểm và phân tách cho ${type.name}.`)
+    if ([...markers, ...separators].some(v => /\d/.test(v)) || markers.some(v => separators.includes(v))) throw new Error(`Ký tự điểm/phân tách không hợp lệ: ${type.name}`)
+    const body = source.slice(match.index!+match[0].length, matches[i+1]?.index ?? source.length)
+    const pointPattern = new RegExp(`(\\d+)(${markers.sort((a,b)=>b.length-a.length).map(esc).join('|')})(?!\\p{L})`, 'giu')
+    const split = new RegExp(`(?:\\s|${separators.sort((a,b)=>b.length-a.length).map(esc).join('|')})+`, 'u')
+    let cursor=0; let found=false
+    for (const pointMatch of body.matchAll(pointPattern)) {
+      found=true
+      const raw = body.slice(cursor, pointMatch.index!+pointMatch[0].length).trim()
+      const fragment = `${match[0]} ${raw}`
+      const listText = body.slice(cursor, pointMatch.index).split(split).filter(Boolean).join(' ')
+      try {
+        if (listText.split(' ').some(token=>!/^\d+$/.test(token))) throw new Error('Ký tự không được cấu hình')
+        const listing = parseSettingNumberListV2(listText, type.formulaId)
+        if (!listing.length || new Set(listing).size !== listing.length) throw new Error('Số trùng hoặc thiếu liệt kê')
+        parsePointTextV2(pointMatch[1])
+        if (isProfileCoefficientFormula(type.formulaId) && !getCoefficientProfileKey(type.formulaId, listing)) throw new Error('Sai độ dài')
+        rows.push({ typeId: type.id, listing: listing.join(', '), point: pointMatch[1], source: fragment })
+      } catch { throw new Error(`Kiểm tra: ${fragment}`) }
+      cursor=pointMatch.index!+pointMatch[0].length
+    }
+    if (!found || body.slice(cursor).split(split).filter(Boolean).length) throw new Error(`Kiểm tra: ${match[0]} ${body.slice(cursor).trim()}`)
+  }
+  return rows
+}
+export function applyAll(group: Group2, types: readonly SettingTypeDefinition[], id: string, text: string, makeId: () => string): Group2 {
+  const rows = parseAll(text, types)
+  const generated = rows.map(row => ({ ...createGroup3FromDefaults(types.find(t=>t.id===row.typeId)!, makeId(), row.listing, row.point), allSourceId: id }))
+  return { ...group, groups3: [...group.groups3.filter(row=>row.allSourceId!==id), ...generated], allEntries: [...(group.allEntries??[]).filter(row=>row.id!==id), {id,text}] }
+}
+export function deleteAll(group: Group2, id: string): Group2 {
+  return {...group, groups3: group.groups3.filter(row=>row.allSourceId!==id), allEntries: (group.allEntries??[]).filter(row=>row.id!==id)}
+}
