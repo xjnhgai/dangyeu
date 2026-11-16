@@ -313,3 +313,15 @@ html:has(.app-shell-page), body:has(.app-shell-page) { overscroll-behavior: none
 .name-coefficients-modal .coefficient-fields label { display:flex; flex-direction:column; min-width:0; gap:5px; }
 .name-coefficients-modal input { width:100%; min-width:0; box-sizing:border-box; font-size:16px; }
 .name-coefficients-modal fieldset { min-width:0; border:1px solid #e8dce5; border-radius:12px; margin:0 0 12px; }
+
+.all-shared-config { margin:0 0 12px; padding:12px; border:1px solid #decbd9; border-radius:12px; }
+.all-shared-config legend { font-size:14px; font-weight:600; }
+.all-text-editor { position:relative; }
+.all-editor .all-text-editor textarea, .all-text-highlight {
+  margin:0; width:100%; box-sizing:border-box; padding:10px;
+  border:1px solid transparent; font:18px/1.5 monospace;
+  letter-spacing:normal; white-space:pre-wrap; overflow-wrap:anywhere; word-break:normal; tab-size:4;
+}
+.all-text-highlight { position:absolute; inset:0; pointer-events:none; color:#253042; overflow:hidden; }
+.all-text-highlight mark { color:#c52848; background:transparent; text-decoration:underline wavy; text-underline-offset:3px; }
+.all-editor .all-text-editor textarea { position:relative; display:block; color:transparent; -webkit-text-fill-color:transparent; caret-color:#253042; background:transparent; border-color:#d8c5d2; overflow:hidden; }

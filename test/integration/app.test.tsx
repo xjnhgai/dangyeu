@@ -741,3 +741,29 @@ it('allows editing and adding rows with obsolete empty/invalid snapshots, withou
   },{timeout:3000})
 
 })
+
+it('keeps shared All settings outside the selected type and persists them on reload', async () => {
+  await saveCalculationWorkspace(fixture())
+  await openApp()
+  fireEvent.click(await screen.findByRole('button', { name: /Mở A4 ngày/ }))
+  fireEvent.click(screen.getByRole('button', { name: 'Cài đặt nhóm thiết lập' }))
+  fireEvent.change(await screen.findByLabelText('PIN cài đặt'), { target: { value: '1945' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Mở cài đặt' }))
+  const markers=screen.getByLabelText('Ký tự xác định điểm') as HTMLInputElement
+  const separators=screen.getByLabelText('Ký tự phân tách') as HTMLInputElement
+  expect(markers.closest('.type-editor')).toBeNull()
+  fireEvent.change(markers,{target:{value:'p%đ'}})
+  fireEvent.change(separators,{target:{value:'-'}})
+  fireEvent.click(screen.getByRole('button',{name:'LA',exact:true}))
+  expect(markers.value).toBe('p%đ')
+  expect(separators.value).toBe('-')
+  await waitFor(async()=>expect((await loadCalculationWorkspace())?.value.data.allInputConfig).toEqual({markers:'p%đ',separators:'-'}),{timeout:3000})
+  cleanup()
+  await openApp()
+  fireEvent.click(await screen.findByRole('button', { name: /Mở A4 ngày/ }))
+  fireEvent.click(screen.getByRole('button', { name: 'Cài đặt nhóm thiết lập' }))
+  fireEvent.change(await screen.findByLabelText('PIN cài đặt'), { target: { value: '1945' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Mở cài đặt' }))
+  expect((screen.getByLabelText('Ký tự xác định điểm') as HTMLInputElement).value).toBe('p%đ')
+  expect((screen.getByLabelText('Ký tự phân tách') as HTMLInputElement).value).toBe('-')
+})

@@ -6,6 +6,9 @@ import type { Group2 } from '../../src/core/models-v2'
 const types=createCalculationDataV2().settingTypes
 const sample='Đề A 171.262.20n 121.676.10n .đề b 050.30n 00.55.10n .lô b 070.5đ 050.4đ 595.141.3đ xiên 14.07.05.40n 14.70.05.40n 14.50.70.30n 14.50.07.30n 14.59.05.30n 14.95.05.30n 07.05.59.30n 05.70.59.30n 95.05.70.30n 95.05.07.30n 59.50.07.20n 59.50.70.20n 95.50.70.20n 95.07.50.20n .07.05.30n 70.50.30n 70.05.30n 59.05.30n 95.05.30n 07.59.30n 70.59.30n 95.70.30n 07.95.30n 07.50.30n'
 describe('All records',()=>{
+ it('pinpoints a misspelled name after a valid group',()=>{
+  expect(()=>parseAll('Đề A 171.262.20n 121.676.10n .đềjjyb 050.30n 00.55.10n .lô b 070.5đ',types)).toThrow(/^Kiểm tra: đềjjyb$/)
+ })
  it('parses the full supplied sample and expands only LA/LB',()=>{
   const rows=parseAll(sample,types)
   expect(rows).toHaveLength(31)
@@ -47,4 +50,24 @@ describe('All records',()=>{
   for(const formula of ['la','lb'] as const) expect(parseSettingNumberListV2('12 070 595',formula)).toEqual(['12','07','70','59','95'])
   expect(()=>parseSettingNumberListV2('12 070','ca')).toThrow()
  })
+})
+
+it('uses one explicit configuration for every type, overriding legacy per-type settings',()=>{
+ const legacy=types.map(t=>({...t,allPointMarkers:'n',allSeparators:'.'}))
+ const config={markers:'p%đ',separators:'-'}
+ const rows=parseAll('lô b 070-5p đề a 12-20p đề b 34-7đ',legacy,config)
+ expect(rows.map(r=>[r.listing,r.point])).toEqual([['07, 70','5'],['12','20'],['34','7']])
+ expect(()=>parseAll('đề a 12.20n',legacy,config)).toThrow()
+ expect(()=>parseAll('lô b 070-5p',legacy,{markers:'',separators:'-'})).toThrow()
+})
+it.each([
+ 'hdhdhh 11 22 33 44 55',
+ 'hdhdhh 11 22 lô b 070.5đ',
+ 'lô b 070.5đ hdhdhh 11 22 33',
+ 'lô b 070.5đ hdhdhh 11.22.5đ',
+])('reports only the unknown word and never accepts partial rows: %s', text=>{
+ expect(()=>parseAll(text,types)).toThrow(/^Kiểm tra: hdhdhh$/)
+ const group:Group2={kind:'group2',id:'g',name:'A',groups3:[]}
+ expect(()=>applyAll(group,types,'a',text,()=> 'row')).toThrow()
+ expect(group.groups3).toEqual([])
 })

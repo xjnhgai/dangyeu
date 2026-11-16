@@ -68,7 +68,10 @@ export type A4PageSelectionV2 =
   | { mode: 'combined'; group1Id: EntityId }
   | { mode: 'group2'; group1Id: EntityId; group2Id: EntityId }
 
+export interface AllInputConfig { markers: string; separators: string }
+
 export interface CalculationDataV2 {
+  allInputConfig?: AllInputConfig
   nameCoefficientTypes?: Record<string, SettingTypeDefinition[]>
   schemaVersion: 2
   settingTypes: SettingTypeDefinition[]

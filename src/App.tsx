@@ -1,7 +1,7 @@
 import { coefficientTypesForName } from './core/coefficient-settings'
 import NameCoefficients from './components/NameCoefficients'
 import AllEditor from './components/AllEditor'
-import { allConfig } from './core/all-input'
+import { allConfig, sharedAllConfig } from './core/all-input'
 import { resultNumbers } from './core/result-input'
 import { useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
@@ -1927,6 +1927,10 @@ function App() {
 
                 {managementPanel === 'types' && (
                   <div className="sheet-content compact-form">
+                    <fieldset className="all-config all-shared-config">
+                      <legend>Cài đặt chung cho All</legend>
+                      {([['markers', 'Ký tự xác định điểm'], ['separators', 'Ký tự phân tách']] as const).map(([field, label]) => <label key={field}>{label}<input aria-label={label} value={sharedAllConfig(data.settingTypes, data.allInputConfig)[field]} onChange={event => { const value = event.target.value; setData(current => ({...current, allInputConfig: {...sharedAllConfig(current.settingTypes, current.allInputConfig), [field]: value}})) }} /></label>)}
+                    </fieldset>
                     {editingType && (
                       <div className="type-editor">
                         <div className="type-name-row">
@@ -1934,7 +1938,7 @@ function App() {
 
                         </div>
                         <div className="all-config">
-                          {([['allAliases','Tên khác',allConfig(editingType).aliases],['allPointMarkers','Ký tự xác định điểm',allConfig(editingType).markers],['allSeparators','Ký tự phân tách',allConfig(editingType).separators]] as const).map(([field,label,value])=><label key={field}>{label}<input aria-label={label} value={value} onChange={event=>setData(current=>({...current,settingTypes:current.settingTypes.map(t=>t.id===editingType.id?{...t,[field]:event.target.value}:t)}))}/></label>)}
+                          {([['allAliases','Tên khác',allConfig(editingType).aliases]] as const).map(([field,label,value])=><label key={field}>{label}<input aria-label={label} value={value} onChange={event=>setData(current=>({...current,settingTypes:current.settingTypes.map(t=>t.id===editingType.id?{...t,[field]:event.target.value}:t)}))}/></label>)}
                         </div>
                         <div className="inline-type-coefficients">
                         {isProfileCoefficientFormula(editingType.formulaId) ? (
@@ -2034,7 +2038,7 @@ function App() {
         <section className="home-screen"><p>Không tìm thấy A4.</p></section>
       )}
 
-      {allOpen && selectedGroup2 && selectedGroup1 && screen === 'page' && <AllEditor key={selectedGroup2.id} group={selectedGroup2} types={data.settingTypes} onClose={()=>setAllOpen(false)} onChange={group=>setData(current=>({...current,groups1:current.groups1.map(g1=>g1.id===selectedGroup1.id?{...g1,groups2:g1.groups2.map(g2=>g2.id===group.id?group:g2)}:g1)}))} />}
+      {allOpen && selectedGroup2 && selectedGroup1 && screen === 'page' && <AllEditor key={selectedGroup2.id} group={selectedGroup2} types={data.settingTypes} config={data.allInputConfig} onClose={()=>setAllOpen(false)} onChange={group=>setData(current=>({...current,groups1:current.groups1.map(g1=>g1.id===selectedGroup1.id?{...g1,groups2:g1.groups2.map(g2=>g2.id===group.id?group:g2)}:g1)}))} />}
       {entryDock && entryDockRow && entryDockType && screen === 'page' && <EntryDock
         formulaId={entryDockType.formulaId} rowId={entryDock.rowId} initialField={entryDock.field}
         title={`${entryDockGroup?.name ?? ''} · ${entryDockType.name}`}
