@@ -1,3 +1,4 @@
+import * as paperExport from '../../src/core/export-paper'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { exportA4Images } from '../../src/core/export-a4-image'
 import { buildA4ProjectionV2 } from '../../src/core/a4-v2'
@@ -26,7 +27,7 @@ function projection(listing = '123, 456') {
   return buildA4ProjectionV2(data, { mode: 'combined', group1Id: 'a4' })
 }
 const summary: A4SummaryV2 = { mode: 'combined', sections: [{ settingTypeId: 'setting-type-3', title: 'ĐA', totals: { settingCount: 1, d: 7, t: 0, difference: -7 } }], totals: { settingCount: 1, d: 7, t: 0, difference: -7 } }
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 describe('A4 JPEG export', () => {
   it('draws three-digit listings before the divider using their actual font width', async () => {
@@ -60,4 +61,14 @@ describe('A4 JPEG export', () => {
     expect(pages.flat().some((call) => call.text === 'Đánh:')).toBe(false)
     expect(files[0].name).toBe('A4-14-11-2026-01.jpg')
   })
+})
+
+
+it('exports every fixed sheet with a unique ordered filename',async()=>{
+ const sheets=[{id:'first'},{id:'second'}] as unknown as HTMLElement[]
+ const paint=vi.spyOn(paperExport,'exportPaper').mockImplementation(async (_sheet,name)=>[new File(['jpeg'],name,{type:'image/jpeg'})])
+ const files=await exportA4Images(projection(),summary,new Map(),true,sheets)
+ expect(paint).toHaveBeenCalledTimes(2)
+ expect(paint.mock.calls.map(call=>call[0])).toEqual(sheets)
+ expect(files.map(file=>file.name)).toEqual(['A4-14-11-2026-01.jpg','A4-14-11-2026-02.jpg'])
 })

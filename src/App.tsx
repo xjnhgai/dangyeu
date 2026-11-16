@@ -1506,8 +1506,8 @@ function App() {
         ? calculateWorkspaceForA4V2(exportData, a4Selection)
         : undefined
       await new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())))
-      const paper = document.querySelector<HTMLElement>('.a4-v2-page')
-      if (!paper) throw new Error('Không tìm thấy trang giấy để xuất.')
+      const paper = [...document.querySelectorAll<HTMLElement>('.a4-v2-page')]
+      if (!paper.length) throw new Error('Không tìm thấy trang giấy để xuất.')
       const files = await exportA4Images(
         exportProjection,
         exportWorkspace?.summary,
@@ -1574,7 +1574,7 @@ function App() {
 
   return (
     <main onFocusCapture={(event) => { const input = event.target; if (input instanceof HTMLTextAreaElement || (input instanceof HTMLInputElement && ['text', 'password'].includes(input.type))) requestAnimationFrame(() => { if (document.activeElement === input) input.setSelectionRange(input.value.length, input.value.length) }) }} className={`${screen === 'page' ? 'app-shell app-shell-page' : 'app-shell'}${entryDock ? ' is-entry-docked' : ''}`}>
-      {nameCoefficientOpen && publisherAuthorized && selectedGroup2 && <NameCoefficients name={selectedGroup2.name} types={coefficientTypesForName(data, selectedGroup2.name)} onClose={()=>{setNameCoefficientOpen(false);setPublisherAuthorized(false)}} onSave={types=>{if (!publisherAuthorized || publisherTarget !== 'name') return; setData(current=>({...current,nameCoefficientTypes:{...current.nameCoefficientTypes,[group2NameKey(selectedGroup2.name)]:types}}));setNameCoefficientOpen(false);setPublisherAuthorized(false)}} />}
+      {nameCoefficientOpen && publisherAuthorized && selectedGroup2 && <NameCoefficients name={selectedGroup2.name} types={coefficientTypesForName(data, selectedGroup2.name)} onClose={()=>{setNameCoefficientOpen(false);setPublisherAuthorized(false)}} onSave={types=>{if (!publisherAuthorized || publisherTarget !== 'name') return; setData(current=>({...current,nameCoefficientTypes:{...current.nameCoefficientTypes,[group2NameKey(selectedGroup2.name)]:types}}))}} />}
       {publisherPromptOpen && <PublisherPrompt onClose={() => setPublisherPromptOpen(false)} onUnlock={() => { setPublisherPromptOpen(false); setPublisherAuthorized(true); if(publisherTarget==='name') setNameCoefficientOpen(true); else openTypesManagement() }} />}
       {screen === 'page' && (
         <>

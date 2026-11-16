@@ -1,3 +1,4 @@
+import { paperPages, PAPER_COLUMN_WIDTH } from '../core/paper-sections'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { A4ProjectionV2 } from '../core/a4-v2'
 import type { A4SummaryV2 } from '../core/summary-v2'
@@ -30,7 +31,13 @@ export default function A4PageV2({ projection, summary, results, showCalculation
   const zoomCallbackRef = useRef(onZoomChange)
   const currentZoomRef = useRef(safeZoom)
   const [paperSize, setPaperSize] = useState(() => ({ width: Math.min(794, window.innerWidth), minHeight: window.innerHeight - 61 }))
-  const [pageHeight, setPageHeight] = useState(0)
+  const headerRef = useRef<HTMLElement>(null)
+  const initializedSize = useRef(false)
+  const lastWindowWidth = useRef(window.innerWidth)
+  const [contentTop, setContentTop] = useState(projection.mode === 'group2' ? 82 : 64)
+  const [titleHeights, setTitleHeights] = useState<Record<string, number>>({})
+  const layout = paperPages(projection.sections, paperSize.width, paperSize.minHeight, contentTop, titleHeights)
+  const pageHeight = layout.pages.length * (paperSize.minHeight + 12) - 12
   const pendingAnchorRef = useRef<{ x: number; y: number; clientX: number; clientY: number; zoom: number } | null>(null)
   const alignPinchRef = useRef<() => void>(() => {})
   useLayoutEffect(() => {
@@ -121,10 +128,25 @@ export default function A4PageV2({ projection, summary, results, showCalculation
     if (!page || !viewport) return
     const update = () => {
       const width = Math.min(794, viewport.clientWidth || window.innerWidth)
-      const minHeight = viewport.clientHeight || window.innerHeight - 61
-      setPaperSize((current) => current.width === width && current.minHeight === minHeight ? current : { width, minHeight })
-      const height = Math.max(page.scrollHeight, page.offsetHeight, paperSize.minHeight)
-      setPageHeight(height)
+      const establishHeight = !initializedSize.current || lastWindowWidth.current !== window.innerWidth
+      initializedSize.current = true
+      lastWindowWidth.current = window.innerWidth
+      const visibleHeight = Math.max(240, viewport.clientHeight || window.innerHeight - 61)
+      setPaperSize(current => {
+        // Data, scrollbar and keyboard changes never resize the physical sheet.
+        const minHeight = establishHeight ? visibleHeight : current.minHeight
+        return current.width === width && current.minHeight === minHeight ? current : { width, minHeight }
+      })
+      const header = headerRef.current
+      const top = header?.offsetHeight ? header.offsetTop + header.offsetHeight + 20 : projection.mode === 'group2' ? 82 : 64
+      setContentTop(current => current === top ? current : top)
+      const measured: Record<string, number> = {}
+      viewport.querySelectorAll<HTMLElement>('[data-paper-type-title]').forEach(title => {
+        if (!title.offsetHeight) return
+        const style = getComputedStyle(title)
+        measured[title.dataset.paperTypeTitle!] = title.offsetHeight + parseFloat(style.marginBottom || '0') + parseFloat(style.marginTop || '0')
+      })
+      setTitleHeights(current => JSON.stringify(current) === JSON.stringify(measured) ? current : measured)
     }
     update()
     window.visualViewport?.addEventListener('resize', update)
@@ -143,13 +165,14 @@ export default function A4PageV2({ projection, summary, results, showCalculation
           height: `${pageHeight * safeZoom}px`,
         }}
       >
-        <article
-          ref={pageRef}
+        {layout.pages.map((sections, pageIndex) => <article
+          key={pageIndex}
+          ref={pageIndex === 0 ? pageRef : undefined}
           className="a4-v2-page"
-          style={{ width: `${paperSize.width}px`, minHeight: `${paperSize.minHeight}px`, transform: `scale(${safeZoom})` }}
+          style={{ width: `${paperSize.width}px`, height: `${paperSize.minHeight}px`, minHeight: `${paperSize.minHeight}px`, top: `${pageIndex * (paperSize.minHeight + 12) * safeZoom}px`, transform: `scale(${safeZoom})` }}
         >
-          {onBack && <button type="button" className="paper-back" onClick={onBack} aria-label="Quay lại">←</button>}
-          <header className="a4-v2-header">
+          {onBack && pageIndex === 0 && <button type="button" className="paper-back" onClick={onBack} aria-label="Quay lại">←</button>}
+          <header ref={pageIndex === 0 ? headerRef : undefined} className="a4-v2-header">
             <h1>{projection.group1.dateLabel}</h1>
             {projection.mode === 'group2' && projection.group2 && (
               <h2>{projection.group2.name}</h2>
@@ -159,30 +182,27 @@ export default function A4PageV2({ projection, summary, results, showCalculation
           {projection.sections.length === 0 ? (
             <div className="a4-v2-empty">Chưa có thiết lập hoàn chỉnh để hiển thị.</div>
           ) : (
-            <div className="a4-v2-sections">
-              {projection.sections.map((section) => {
+            <div className="a4-v2-sections" style={{ gridTemplateColumns: `repeat(${layout.columns}, ${PAPER_COLUMN_WIDTH}px)`, height: `${layout.columnHeight}px` }}>
+              {sections.map((section) => {
                 const sectionSummary = summary?.sections.find((item) => item.settingTypeId === section.settingTypeId)
-                const sectionPointTotal = section.entries.reduce((total, entry) => {
-                  const point = Number(entry.group3.point)
-                  return total + (Number.isFinite(point) ? point : 0)
-                }, 0)
-                const sectionResultsVisible = showCalculation && sectionSummary !== undefined
+                const sectionPointTotal = section.pointTotal
+                const sectionResultsVisible = showCalculation && sectionSummary !== undefined && section.last
                 return (
-                  <section className="a4-v2-section" key={section.settingTypeId}>
-                    <h3>{section.title}</h3>
+                  <section className={`a4-v2-section${section.newRow ? " continuation-start" : ""}`} key={`${section.settingTypeId}-${section.index}`}>
+                    <h3 data-paper-type-title={section.settingTypeId}>{section.title}</h3>
                     <div className="a4-v2-entry-list">
-                      {section.entries.map((entry) => {
+                      {section.entries.map(({entry,start,end,showPoint}) => {
                         const result = results.get(entry.group3.id)
-                        const values = splitSeparatedValuesV2(entry.group3.listing)
+                        const values = splitSeparatedValuesV2(entry.group3.listing).slice(start,end)
                         return (
-                          <div className="a4-v2-entry" key={entry.group3.id}>
+                          <div className="a4-v2-entry" key={`${entry.group3.id}-${start}`}>
                             <div className="a4-v2-entry-main">
                               <div className="a4-v2-listing" aria-label="Danh sách">
                                 {values.length === 0 ? (
                                   <span className="a4-v2-muted">—</span>
                                 ) : values.map((value, index) => (
                                   <span
-                                    className={result?.listingMatchFlags[index] ? 'a4-v2-number is-matched' : 'a4-v2-number'}
+                                    className={result?.listingMatchFlags[start+index] ? 'a4-v2-number is-matched' : 'a4-v2-number'}
                                     key={`${entry.group3.id}-${index}`}
                                   >
                                     {value}
@@ -190,7 +210,7 @@ export default function A4PageV2({ projection, summary, results, showCalculation
                                 ))}
                               </div>
                               <span className="a4-v2-entry-divider" aria-hidden="true" />
-                              <strong className="a4-v2-point">{entry.group3.point || '—'}</strong>
+                              <strong className="a4-v2-point">{showPoint ? entry.group3.point || '—' : ''}</strong>
                             </div>
                           </div>
                         )
@@ -211,12 +231,12 @@ export default function A4PageV2({ projection, summary, results, showCalculation
             </div>
           )}
 
-          <footer className={`a4-v2-total-area${showCalculation && summary ? '' : ' is-placeholder'}`} aria-hidden={!showCalculation || !summary}>
+          {pageIndex === layout.pages.length - 1 && <footer className={`a4-v2-total-area${showCalculation && summary ? '' : ' is-placeholder'}`} aria-hidden={!showCalculation || !summary}>
             <div><span>Tổng Đánh</span><strong>{showCalculation && summary ? formatAmount(summary.totals.d) : '\u00a0'}</strong></div>
             <div><span>Tổng Trúng</span><strong>{showCalculation && summary ? formatAmount(summary.totals.t) : '\u00a0'}</strong></div>
             <div className="a4-v2-difference" aria-label={showCalculation && summary ? `Trúng trừ Đánh: ${formatAmount(summary.totals.difference)}` : undefined}><strong>{showCalculation && summary ? formatAmount(summary.totals.difference) : '\u00a0'}</strong></div>
-          </footer>
-        </article>
+          </footer>}
+        </article>)}
       </div>
     </div>
   )

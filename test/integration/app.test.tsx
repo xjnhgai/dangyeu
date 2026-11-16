@@ -509,17 +509,17 @@ describe('application integration', () => {
     fireEvent.touchMove(viewport, { touches: [{ clientX: 70, clientY: 220 }, { clientX: 270, clientY: 220 }] })
     await waitFor(() => { expect(viewport.scrollLeft).toBe(130); expect(viewport.scrollTop).toBe(180) })
   })
-  it('uses the visible paper viewport height without reserving extra page space below', async () => {
+  it('fixes paper height at the initial viewport size and ignores later keyboard shrink', async () => {
+    const height = vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(640)
     await saveCalculationWorkspace(fixture())
     await openApp()
     fireEvent.click(await screen.findByRole('button', { name: /Mở A4 ngày/ }))
-    const viewport = document.querySelector('.a4-v2-scroll') as HTMLElement
-    Object.defineProperty(viewport, 'clientHeight', { configurable: true, value: 300 })
+    const paper = document.querySelector('.a4-v2-page') as HTMLElement
+    expect(paper.style.height).toBe('640px')
+    height.mockReturnValue(300)
     fireEvent(window, new Event('resize'))
-    await waitFor(() => {
-      expect((document.querySelector('.a4-v2-page') as HTMLElement).style.minHeight).toBe('300px')
-      expect((document.querySelector('.a4-v2-zoom-frame') as HTMLElement).style.height).toBe('300px')
-    })
+    expect(paper.style.height).toBe('640px')
+    expect((document.querySelector('.a4-v2-zoom-frame') as HTMLElement).style.height).toBe('640px')
   })
   it('focuses the same rename input when switching setting names and saves the previous name', async () => {
     await saveCalculationWorkspace(fixture())
@@ -642,19 +642,23 @@ describe('name coefficient settings end to end', () => {
     expect(within(dialog).queryByLabelText('Tên thiết lập')).toBeNull()
     expect(within(dialog).queryByLabelText('Tên khác')).toBeNull()
     expect(within(dialog).queryByText(/Reset tên/)).toBeNull()
-    fireEvent.change(within(dialog).getByLabelText('LB Hệ số Đánh'),{target:{value:'-1'}})
-    fireEvent.click(within(dialog).getByRole('button',{name:'Lưu hệ số'}))
+    const editRate = (label: string, value: string) => {
+      const input=within(dialog).getByLabelText(label)
+      fireEvent.change(input,{target:{value}}); fireEvent.blur(input)
+    }
+    editRate('LB Hệ số Đánh','-1')
     expect(within(dialog).getByRole('alert').textContent).toMatch(/không âm/)
     expect(paperValue('d')).toBe('10')
-    fireEvent.change(within(dialog).getByLabelText('LB Hệ số Đánh'),{target:{value:'7'}})
-    fireEvent.change(within(dialog).getByLabelText('LB Hệ số Trúng'),{target:{value:'11'}})
-    fireEvent.change(within(dialog).getByLabelText('ĐA Hệ số Đánh (2 chữ số)'),{target:{value:'13'}})
-    fireEvent.change(within(dialog).getByLabelText('ĐA Hệ số Trúng (2 chữ số)'),{target:{value:'17'}})
-    fireEvent.change(within(dialog).getByLabelText('XB Hệ số Đánh (3 số)'),{target:{value:'19'}})
-    fireEvent.change(within(dialog).getByLabelText('XB Hệ số Trúng (3 số)'),{target:{value:'23'}})
-    fireEvent.click(within(dialog).getByRole('button',{name:'Lưu hệ số'}))
-    expect(screen.queryByRole('dialog',{name:'Hệ số theo tên Lan'})).toBeNull()
+    editRate('LB Hệ số Đánh','7')
+    editRate('LB Hệ số Trúng','11')
+    editRate('ĐA Hệ số Đánh (2 chữ số)','13')
+    editRate('ĐA Hệ số Trúng (2 chữ số)','17')
+    editRate('XB Hệ số Đánh (3 số)','19')
+    editRate('XB Hệ số Trúng (3 số)','23')
+    expect(within(dialog).queryByRole('button',{name:'Lưu hệ số'})).toBeNull()
     expect(paperValue('d')).toBe('35');expect(paperValue('t')).toBe('110')
+    fireEvent.click(within(dialog).getByRole('button',{name:'Đóng hệ số theo tên'}))
+    expect(screen.queryByRole('dialog',{name:'Hệ số theo tên Lan'})).toBeNull()
     await waitFor(async()=>{
       const data = (await loadCalculationWorkspace())!.value.data
       expect(data.nameCoefficientTypes!.lan[0].defaultCoefficientD).toBe('7')

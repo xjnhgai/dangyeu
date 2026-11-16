@@ -307,3 +307,9 @@ html:has(.app-shell-page), body:has(.app-shell-page) { overscroll-behavior: none
 .editor-sheet .setting-type-chip.is-selected { color:#fff; border-color:#bd7da5; background:#bd7da5; }
 
 .from-all .listing-input,.from-all .point-input { color:#24746f; border-color:#a9d0cb; background:#eef7f6; }
+
+.name-coefficients-modal .coefficient-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-block:10px; }
+.name-coefficients-modal .coefficient-fields > strong { grid-column:1 / -1; }
+.name-coefficients-modal .coefficient-fields label { display:flex; flex-direction:column; min-width:0; gap:5px; }
+.name-coefficients-modal input { width:100%; min-width:0; box-sizing:border-box; font-size:16px; }
+.name-coefficients-modal fieldset { min-width:0; border:1px solid #e8dce5; border-radius:12px; margin:0 0 12px; }

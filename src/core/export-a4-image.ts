@@ -177,9 +177,17 @@ export async function exportA4Images(
   summary: A4SummaryV2 | undefined,
   results: ReadonlyMap<string, SettingCalculationResult>,
   showCalculation: boolean,
-  paper?: HTMLElement,
+  paper?: HTMLElement | readonly HTMLElement[],
 ): Promise<File[]> {
-  if (paper) return exportPaper(paper, `A4-${projection.group1.dateLabel.replaceAll('/', '-')}.jpg`)
+  if (paper) {
+    const sheets = Array.isArray(paper) ? paper : [paper as HTMLElement]
+    const files: File[] = []
+    for (const [index, sheet] of sheets.entries()) {
+      const suffix = sheets.length > 1 ? `-${String(index + 1).padStart(2, '0')}` : ''
+      files.push(...await exportPaper(sheet, `A4-${projection.group1.dateLabel.replaceAll('/', '-')}${suffix}.jpg`))
+    }
+    return files
+  }
   const pages: ExportPage[] = [createPage(projection)]
   let page = pages[0]!
 
