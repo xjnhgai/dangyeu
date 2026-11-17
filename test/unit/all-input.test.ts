@@ -73,19 +73,18 @@ it.each([
 })
 
 import { saveMessage } from '../../src/core/all-input'
-it.each(['kep','kép','KEP','KÉP','Kép'])('expands %s to ten doubles for DA and DB only', word=>{
- const doubles=Array.from({length:10},(_,i)=>`${i}${i}`)
- for(const formula of ['da','db'] as const) expect(parseSettingNumberListV2(word,formula)).toEqual(doubles)
- const rows=parseAll(`đề a ${word}.10n đề b ${word}.5đ`,types)
- expect(rows.map(row=>row.listing)).toEqual([doubles.join(', '),doubles.join(', ')])
- for(const formula of ['la','lb','xa','xb','ca','cb'] as const) expect(()=>parseSettingNumberListV2(word,formula)).toThrow()
- expect(()=>parseAll(`lô b ${word}.5đ`,types)).toThrow()
+it.each(['kep','kép','KEP','KÉP','Kép'])('rejects bare %s but accepts standalone A/B shorthand', word=>{
+ for(const formula of ['da','db'] as const) expect(()=>parseSettingNumberListV2(word,formula)).toThrow()
+ expect(()=>parseAll(`đề a ${word}.10n`,types)).toThrow()
+ const rows=parseAll(`${word} a 10điểm ${word} b 5đ`,types)
+ expect(rows.map(r=>[r.specialListing,r.listing.split(', ').length,r.point])).toEqual([['kep',10,'10'],['kep',10,'5']])
+ expect(()=>parseAll(`LA ${word} a 10đ`,types)).toThrow()
 })
 it('retains invalid messages without stale results and restores results only after correction',()=>{
  let i=0;const next=()=>String(++i)
  const group:Group2={kind:'group2',id:'g',name:'A',groups3:[createGroup3FromDefaults(types[0],'manual','00','2')]}
  const a=saveMessage(group,types,'a','lô b 070.5đ',next)
- const b=saveMessage(a,types,'b','đề b kép.10n',next)
+ const b=saveMessage(a,types,'b','kép b 10n',next)
  const invalid=saveMessage(b,types,'a','lô b jjy 070.5đ',next)
  expect(invalid.groups3.map(row=>row.id)).toEqual([b.groups3[0].id,b.groups3[2].id])
  expect(invalid.allEntries?.map(row=>row.id)).toEqual(['a','b'])

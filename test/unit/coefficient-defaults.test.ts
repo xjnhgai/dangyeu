@@ -4,12 +4,12 @@ import { defaultAppPreferences, validateAppPreferences } from '../../src/core/ap
 import { createCalculationDataV2 } from '../../src/core/tree-v2'
 import { buildEntryPreview } from '../../src/core/entry-preview'
 
-describe('default-one coefficient catalog', () => {
-  it('initializes every formula and every supported profile to one', () => {
+describe('formula-specific coefficient catalog', () => {
+  it('initializes the requested defaults for each formula and profile', () => {
     for (const type of createCalculationDataV2().settingTypes) {
-      expect(type.defaultCoefficientD).toBe('1')
-      expect(type.defaultCoefficientT).toBe('1')
-      for (const pair of Object.values(type.defaultCoefficientsByCount ?? {})) expect(pair).toEqual({ coefficientD: '1', coefficientT: '1' })
+      if (['lb','la'].includes(type.formulaId)) expect([type.defaultCoefficientD,type.defaultCoefficientT]).toEqual(['21,8','80'])
+      if (['da','db'].includes(type.formulaId)) expect(type.defaultCoefficientsByCount).toEqual({'2':{coefficientD:'0,74',coefficientT:'70'},'3':{coefficientD:'0,74',coefficientT:'40000'}})
+      if (['xa','xb'].includes(type.formulaId)) expect(type.defaultCoefficientsByCount).toEqual({'2':{coefficientD:'0,65',coefficientT:'10'},'3':{coefficientD:'0,65',coefficientT:'35'},'4':{coefficientD:'0,65',coefficientT:'100'}})
     }
   })
   it('fills old missing coefficients without changing edited or zero coefficients', () => {
@@ -20,10 +20,10 @@ describe('default-one coefficient catalog', () => {
     da.defaultCoefficientD = '2.5'; da.defaultCoefficientT = '3'
     da.defaultCoefficientsByCount = { '2': { coefficientD: '7', coefficientT: '0' } }
     const result = initializeCoefficientDefaults(data)
-    expect(result.settingTypes[0].defaultCoefficientD).toBe('1')
+    expect(result.settingTypes[0].defaultCoefficientD).toBe('21,8')
     expect(result.settingTypes[0].defaultCoefficientT).toBe('0')
     expect(result.settingTypes.find((type) => type.formulaId === 'da')?.defaultCoefficientsByCount).toEqual({
-      '2': { coefficientD: '7', coefficientT: '0' }, '3': { coefficientD: '2.5', coefficientT: '3' },
+      '2': { coefficientD: '7', coefficientT: '0' }, '3': { coefficientD: '2.5', coefficientT: '40000' },
     })
     expect(data.settingTypes[0].defaultCoefficientD).toBeNull()
   })

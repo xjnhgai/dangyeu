@@ -193,7 +193,7 @@ export default function A4PageV2({ projection, summary, results, showCalculation
                     <div className="a4-v2-entry-list">
                       {section.entries.map(({entry,start,end,showPoint}) => {
                         const result = results.get(entry.group3.id)
-                        const values = splitSeparatedValuesV2(entry.group3.listing).slice(start,end)
+                        const values = entry.group3.specialListing ? [`kép ${entry.settingType.formulaId === 'da' ? 'A' : 'B'}`] : splitSeparatedValuesV2(entry.group3.listing).slice(start,end)
                         return (
                           <div className="a4-v2-entry" key={`${entry.group3.id}-${start}`}>
                             <div className="a4-v2-entry-main">
@@ -202,7 +202,7 @@ export default function A4PageV2({ projection, summary, results, showCalculation
                                   <span className="a4-v2-muted">—</span>
                                 ) : values.map((value, index) => (
                                   <span
-                                    className={result?.listingMatchFlags[start+index] ? 'a4-v2-number is-matched' : 'a4-v2-number'}
+                                    className={(entry.group3.specialListing ? result?.listingMatchFlags.some(Boolean) : result?.listingMatchFlags[start+index]) ? 'a4-v2-number is-matched' : 'a4-v2-number'}
                                     key={`${entry.group3.id}-${index}`}
                                   >
                                     {value}

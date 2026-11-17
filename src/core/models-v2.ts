@@ -20,6 +20,8 @@ export interface CoefficientPairText {
 /** Global catalog definition; it is intentionally outside the three-level tree. */
 export interface SettingTypeDefinition {
   id: EntityId
+  kepName?: string
+  kepAliases?: string
   allAliases?: string
   allPointMarkers?: string
   allSeparators?: string
@@ -33,6 +35,7 @@ export interface SettingTypeDefinition {
 
 /** One concrete setting entry. Group3 directly owns all entered values. */
 export interface Group3 {
+  specialListing?: 'kep'
   allSourceId?: string
   kind: 'group3'
   id: EntityId

@@ -163,7 +163,7 @@ export function findExactDuplicates(
  * ĐA/ĐB: listing 2 hoặc 3 chữ số, đồng nhất trong một bản ghi;
  * D = điểm × hệ số Đánh; T = số mục khớp trong GĐB × điểm × hệ số Trúng theo độ rộng 2/3 chữ số.
  * XA/XB:
- * D = điểm × hệ số Đánh theo độ dài danh sách (2–5 số).
+ * D = điểm × hệ số Đánh theo độ dài danh sách (2–4 số).
  * T = điểm × hệ số Trúng theo độ dài danh sách, trả một lần khi mọi số trong danh sách đều khớp.
  */
 export function calculateSetting(
@@ -176,8 +176,8 @@ export function calculateSetting(
   // Tổng hợp dữ liệu đầu vào của phép tính T.
   const gdbOnlyFormula = formulaId === 'da' || formulaId === 'db' || formulaId === 'ca' || formulaId === 'cb'
   const compoundFormula = formulaId === 'xa' || formulaId === 'xb'
-  if (compoundFormula && (listing.length < 2 || listing.length > 5)) {
-    throw new Error('XA/XB yêu cầu đúng 2, 3, 4 hoặc 5 số trong ô Liệt kê.')
+  if (compoundFormula && (listing.length < 2 || listing.length > 4)) {
+    throw new Error('XA/XB yêu cầu đúng 2, 3 hoặc 4 số trong ô Liệt kê.')
   }
   const inputRecords = gdbOnlyFormula
     ? (gdb === '' ? [] : [gdb])
@@ -205,7 +205,7 @@ export function calculateSetting(
   ))
 
   // XA/XB are combination-style formulas: every number in the selected
-  // 2–5-number list must appear at least once in the draw. A successful
+  // 2–4-number list must appear at least once in the draw. A successful
   // combination pays once, not once per matched pair.
   const matchingPairCount = compoundFormula
     ? (listing.length > 0 && listing.every((listingNumber) => inputRecords.some((record) => getComparableNumber(record) === listingNumber)) ? 1 : 0)

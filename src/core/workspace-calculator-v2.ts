@@ -84,7 +84,7 @@ export function parseOneToSevenTextV2(text: string): string[] {
 
 /** Parse 00–99 listings generally; ĐA/ĐB accept homogeneous 2-digit or 3-digit lists. */
 export function parseSettingNumberListV2(text: string, formulaId?: FormulaId): string[] {
-  const values = splitSeparatedValuesV2(text).flatMap(value => (formulaId === 'da' || formulaId === 'db') && /^(kép|kep)$/iu.test(value.normalize('NFC')) ? Array.from({length:10}, (_,i) => `${i}${i}`) : [value])
+  const values = splitSeparatedValuesV2(text)
   const shorthand = formulaId === 'la' || formulaId === 'lb'
   const allowTwoOrThreeDigits = formulaId === 'da' || formulaId === 'db'
   const invalid = values.find((value) => !((allowTwoOrThreeDigits || shorthand) ? VALID_SETTING_NUMBER_DA_DB : VALID_SETTING_NUMBER).test(value))
@@ -103,7 +103,7 @@ export function isProfileCoefficientFormula(formulaId: FormulaId): boolean {
 
 export function getCoefficientProfileKeys(formulaId: FormulaId): ListingCountKey[] {
   if (formulaId === 'da' || formulaId === 'db') return ['2', '3']
-  if (formulaId === 'xa' || formulaId === 'xb') return ['2', '3', '4', '5']
+  if (formulaId === 'xa' || formulaId === 'xb') return ['2', '3', '4']
   return []
 }
 
@@ -113,7 +113,7 @@ export function getCoefficientProfileKey(formulaId: FormulaId, listing: readonly
     return width === 2 || width === 3 ? String(width) as ListingCountKey : null
   }
   if (formulaId === 'xa' || formulaId === 'xb') {
-    return listing.length >= 2 && listing.length <= 5 ? String(listing.length) as ListingCountKey : null
+    return listing.length >= 2 && listing.length <= 4 ? String(listing.length) as ListingCountKey : null
   }
   return null
 }
@@ -150,7 +150,7 @@ function calculateGroup3(group3: Readonly<Group3>, drawData: DrawData, type: Rea
       if (!profileKey) {
         throw new WorkspaceCalculationV2Error('INVALID_LISTING', type.formulaId === 'da' || type.formulaId === 'db'
           ? 'ĐA/ĐB cần danh sách toàn số 2 chữ số hoặc toàn số 3 chữ số.'
-          : 'XA/XB yêu cầu đúng 2, 3, 4 hoặc 5 số trong ô Liệt kê.')
+          : 'XA/XB yêu cầu đúng 2, 3 hoặc 4 số trong ô Liệt kê.')
       }
       const pair = type.defaultCoefficientsByCount?.[profileKey]
       // Legacy ĐA/ĐB catalogs may have only scalar defaults. Never read a row
@@ -216,7 +216,7 @@ export function calculateWorkspaceForA4V2(
   }
 
   const settingResults = new Map<EntityId, SettingCalculationResult>()
-  const typesByGroup = new Map(projection.group1.groups2.map(group => [group.id, new Map((selection.usePrivateCoefficients ? coefficientTypesForName(data, group.name) : data.settingTypes).map(type => [type.id, type]))]))
+  const typesByGroup = new Map(projection.group1.groups2.map(group => [group.id, new Map((selection.mode === 'group2' && selection.usePrivateCoefficients ? coefficientTypesForName(data, group.name) : data.settingTypes).map(type => [type.id, type]))]))
   for (const entry of projection.entries) {
     const type = typesByGroup.get(entry.group2Id)!.get(entry.group3.settingTypeId)!
     settingResults.set(entry.group3.id, calculateGroup3(entry.group3, projection.group1.drawData, type))

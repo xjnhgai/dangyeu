@@ -1,7 +1,7 @@
 import { coefficientTypesForName } from './core/coefficient-settings'
 import NameCoefficients from './components/NameCoefficients'
 import AllEditor from './components/AllEditor'
-import { allConfig, sharedAllConfig } from './core/all-input'
+import { sharedAllConfig } from './core/all-input'
 import { resultNumbers } from './core/result-input'
 import { useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
@@ -29,10 +29,8 @@ import {
   deleteGroup1V2,
   deleteGroup2V2,
   reorderSettingType,
-  renameSettingType,
   updateGroup1DrawDataV2,
   updateGroup3V2,
-  updateSettingTypeDefaults,
 } from './core/tree-v2'
 import { buildA4ProjectionV2 } from './core/a4-v2'
 import { findExactDuplicates } from './core/calculation'
@@ -43,7 +41,6 @@ import {
   parsePointTextV2,
   parseSettingNumberListV2,
   getCoefficientProfileKey,
-  getCoefficientProfileKeys,
   isProfileCoefficientFormula,
 } from './core/workspace-calculator-v2'
 import { exportA4Images } from './core/export-a4-image'
@@ -64,8 +61,6 @@ import type {
   Group1,
   Group2,
   Group3,
-  ListingCountKey,
-  CoefficientPairText,
   SettingTypeDefinition,
 } from './core/models-v2'
 
@@ -90,16 +85,6 @@ type SavedRowDraft = {
   point: string
   coefficientD: string
   coefficientT: string
-}
-
-type CountCoefficientDraft = Record<ListingCountKey, { coefficientD: string; coefficientT: string }>
-const LISTING_COUNT_KEYS: ListingCountKey[] = ['2', '3', '4', '5']
-
-function createCountCoefficientDraft(type: SettingTypeDefinition): CountCoefficientDraft {
-  return Object.fromEntries(LISTING_COUNT_KEYS.map((key) => {
-    const pair = type.defaultCoefficientsByCount?.[key]
-    return [key, { coefficientD: pair?.coefficientD ?? '', coefficientT: pair?.coefficientT ?? '' }]
-  })) as CountCoefficientDraft
 }
 
 const TOOLS: { key: ToolKey | 'save'; label: string; icon: 'eye' | 'edit' | 'chart' | 'download' }[] = [
@@ -192,18 +177,7 @@ function isOneToSevenDraftValid(text: string): boolean {
   return getOneToSevenDraftError(text) === ''
 }
 
-function defaultSettingTypeName(type: SettingTypeDefinition): string {
-  switch (type.formulaId) {
-    case 'lb': return 'LB'
-    case 'la': return 'LA'
-    case 'da': return 'ĐA'
-    case 'db': return 'ĐB'
-    case 'ca': return 'CA'
-    case 'cb': return 'CB'
-    case 'xa': return 'XA'
-    case 'xb': return 'XB'
-  }
-}
+
 
 function createDraftRow(type: SettingTypeDefinition): DraftRow {
   return {
@@ -293,7 +267,6 @@ function App() {
   const [greetingFontFamily, setGreetingFontFamily] = useState('Arial, Helvetica, sans-serif')
   const [greetingColor, setGreetingColor] = useState('#34475e')
   const greetingInputRef = useRef<HTMLInputElement | null>(null)
-  const typeNameInputRef = useRef<HTMLInputElement | null>(null)
 
   const [dateDraft, setDateDraft] = useState(todayInputValue())
   const [newGroupName, setNewGroupName] = useState('')
@@ -303,23 +276,11 @@ function App() {
   const [drawGdb, setDrawGdb] = useState('')
   const [drawDraftGroup1Id, setDrawDraftGroup1Id] = useState<EntityId | null>(null)
 
-  const [editingTypeId, setEditingTypeId] = useState('')
-  const [editingTypeName, setEditingTypeName] = useState('')
-  const [editingTypeD, setEditingTypeD] = useState('')
-  const [editingTypeT, setEditingTypeT] = useState('')
-  const [editingTypeCoefficientsByCount, setEditingTypeCoefficientsByCount] = useState<CountCoefficientDraft>({
-    '2': { coefficientD: '', coefficientT: '' },
-    '3': { coefficientD: '', coefficientT: '' },
-    '4': { coefficientD: '', coefficientT: '' },
-    '5': { coefficientD: '', coefficientT: '' },
-  })
   const [nameCoefficientOpen,setNameCoefficientOpen]=useState(false)
   const [entryDock, setEntryDock] = useState<EntryTarget | null>(null)
   const groupDragRef = useRef<{ source: string; target: string } | null>(null)
   const [draggingGroupName, setDraggingGroupName] = useState('')
   const [dropGroupName, setDropGroupName] = useState('')
-  const [draggingTypeId, setDraggingTypeId] = useState<EntityId | null>(null)
-  const [typeDropTargetId, setTypeDropTargetId] = useState<EntityId | null>(null)
   useEffect(() => {
     const closePrivatePanels = () => {   setEntryDock(null); setAllOpen(false); setNameCoefficientOpen(false) }
     const onHidden = () => { if (document.visibilityState === 'hidden') closePrivatePanels() }
@@ -449,13 +410,10 @@ function App() {
     return () => { cancelled = true }
   }, [])
 
-  const draggedTypeIdRef = useRef<EntityId | null>(null)
-  const typeDropTargetRef = useRef<EntityId | null>(null)
 
   const selectedGroup1 = data.groups1.find((item) => item.id === selectedGroup1Id) ?? null
   const selectedGroup2 = selectedGroup1?.groups2.find((item) => item.id === selectedGroup2Id) ?? null
   const activeSettingType = data.settingTypes.find((item) => item.id === activeSettingTypeId) ?? null
-  const editingType = data.settingTypes.find((item) => item.id === editingTypeId) ?? null
 
   const groupNameSuggestions = useMemo(() => {
     const names = new Map<string, string>()
@@ -1002,45 +960,6 @@ function App() {
     if (drag && !cancelled) reorderGroup2Names(drag.source, drag.target)
   }
 
-  function startSettingTypeDrag(event: ReactPointerEvent<HTMLButtonElement>, typeId: EntityId) {
-    if (event.button !== 0) return
-    event.preventDefault()
-    draggedTypeIdRef.current = typeId
-    typeDropTargetRef.current = typeId
-    setDraggingTypeId(typeId)
-    setTypeDropTargetId(typeId)
-    event.currentTarget.setPointerCapture(event.pointerId)
-  }
-
-  function trackSettingTypeDrag(event: ReactPointerEvent<HTMLButtonElement>) {
-    if (!draggedTypeIdRef.current) return
-    const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-sort-type]')
-    const targetId = target?.dataset.sortType ?? null
-    if (targetId && data.settingTypes.some((item) => item.id === targetId)) {
-      typeDropTargetRef.current = targetId
-      setTypeDropTargetId(targetId)
-    }
-  }
-
-  function finishSettingTypeDrag() {
-    const sourceId = draggedTypeIdRef.current
-    const targetId = typeDropTargetRef.current
-    if (sourceId && targetId && sourceId !== targetId) {
-      const targetIndex = data.settingTypes.findIndex((item) => item.id === targetId)
-      if (targetIndex >= 0) runAction(() => setData(reorderSettingType(data, sourceId, targetIndex)))
-    }
-    draggedTypeIdRef.current = null
-    typeDropTargetRef.current = null
-    setDraggingTypeId(null)
-    setTypeDropTargetId(null)
-  }
-
-  function cancelSettingTypeDrag() {
-    draggedTypeIdRef.current = null
-    typeDropTargetRef.current = null
-    setDraggingTypeId(null)
-    setTypeDropTargetId(null)
-  }
 
   function ensureOneDraftRow(rows: DraftRow[], type: SettingTypeDefinition): DraftRow[] {
     return rows.length ? rows : [createDraftRow(type)]
@@ -1272,182 +1191,9 @@ function App() {
     return true
   }
 
-  function openTypesManagement() {
-    const first = data.settingTypes[0]
-    if (first) {
-      setEditingTypeId(first.id)
-      setEditingTypeName(first.name)
-      setEditingTypeD(first.defaultCoefficientD ?? '')
-      setEditingTypeT(first.defaultCoefficientT ?? '')
-      setEditingTypeCoefficientsByCount(createCountCoefficientDraft(first))
-    }
-    setManagementPanel('types')
-  }
-
-  function persistEditingType(): boolean {
-    if (!editingType) return true
-    const nextName = editingTypeName.trim()
-    const nextD = editingTypeD.trim()
-    const nextT = editingTypeT.trim()
-    const currentD = editingType.defaultCoefficientD ?? ''
-    const currentT = editingType.defaultCoefficientT ?? ''
-    const nameChanged = nextName !== editingType.name
-    const usesProfileCoefficients = isProfileCoefficientFormula(editingType.formulaId)
-    const profileKeys = getCoefficientProfileKeys(editingType.formulaId)
-    const nextCoefficientMap: Partial<Record<ListingCountKey, CoefficientPairText>> = {}
-    let countCoefficientsChanged = false
-
-    if (usesProfileCoefficients) {
-      for (const key of profileKeys) {
-        const nextPair = editingTypeCoefficientsByCount[key]
-        const nextCountD = nextPair.coefficientD.trim()
-        const nextCountT = nextPair.coefficientT.trim()
-        const currentPair = editingType.defaultCoefficientsByCount?.[key]
-        const currentCountD = currentPair?.coefficientD ?? ''
-        const currentCountT = currentPair?.coefficientT ?? ''
-
-        if ((nextCountD === '') !== (nextCountT === '')) {
-          const profileLabel = editingType.formulaId === 'da' || editingType.formulaId === 'db' ? `${key} chữ số` : `${key} số trong danh sách`
-          setErrorMessage(`Hãy nhập đủ hệ số Đánh và Trúng cho loại ${profileLabel}.`)
-          return false
-        }
-        if (nextCountD) {
-          try {
-            const profileLabel = editingType.formulaId === 'da' || editingType.formulaId === 'db' ? `${key} chữ số` : `${key} số`
-            parseCoefficientTextV2(nextCountD, `Hệ số Đánh (${profileLabel})`)
-            parseCoefficientTextV2(nextCountT, `Hệ số Trúng (${profileLabel})`)
-          } catch (error) {
-            setErrorMessage(error instanceof Error ? error.message : `Hệ số cho danh sách ${key} số không hợp lệ.`)
-            return false
-          }
-        }
-        if (nextCountD !== currentCountD || nextCountT !== currentCountT) countCoefficientsChanged = true
-        nextCoefficientMap[key] = {
-          coefficientD: nextCountD || null,
-          coefficientT: nextCountT || null,
-        }
-      }
-    }
-
-    const coefficientChanged = usesProfileCoefficients
-      ? countCoefficientsChanged
-      : nextD !== currentD || nextT !== currentT
-    if (!nameChanged && !coefficientChanged) return true
-
-    try {
-      let updated = renameSettingType(data, editingType.id, nextName)
-      if (usesProfileCoefficients && countCoefficientsChanged) {
-        updated = updateSettingTypeDefaults(updated, editingType.id, { coefficientsByCount: nextCoefficientMap })
-        const savedCountMap = Object.fromEntries(profileKeys.map((key) => {
-          const pair = nextCoefficientMap[key]
-          return [key, {
-            coefficientD: pair?.coefficientD ?? '',
-            coefficientT: pair?.coefficientT ?? '',
-          }]
-        }))
-        updated = {
-          ...updated,
-          groups1: updated.groups1.map((group1) => ({
-            ...group1,
-            groups2: group1.groups2.map((group2) => ({
-              ...group2,
-              groups3: group2.groups3.map((group3) => group3.settingTypeId === editingType.id
-                ? { ...group3, coefficientsByCount: savedCountMap }
-                : group3),
-            })),
-          })),
-        }
-      } else if (!usesProfileCoefficients && coefficientChanged) {
-        if (!nextD || !nextT) {
-          throw new Error('Hãy nhập đủ hệ số Đánh và Trúng trước khi chuyển sang thiết lập khác.')
-        }
-        parseCoefficientTextV2(nextD, 'Hệ số Đánh')
-        parseCoefficientTextV2(nextT, 'Hệ số Trúng')
-        updated = updateSettingTypeDefaults(updated, editingType.id, {
-          coefficientD: nextD,
-          coefficientT: nextT,
-        })
-        updated = {
-          ...updated,
-          groups1: updated.groups1.map((group1) => ({
-            ...group1,
-            groups2: group1.groups2.map((group2) => ({
-              ...group2,
-              groups3: group2.groups3.map((group3) => group3.settingTypeId === editingType.id
-                ? { ...group3, coefficientD: nextD, coefficientT: nextT }
-                : group3),
-            })),
-          })),
-        }
-        setDraftRowsByType((current) => Object.fromEntries(
-          Object.entries(current).map(([key, rows]) => [
-            key,
-            key.endsWith(`:${editingType.id}`)
-              ? rows.map((row) => ({ ...row, coefficientD: nextD, coefficientT: nextT }))
-              : rows,
-          ]),
-        ))
-        const affectedGroup3Ids = updated.groups1.flatMap((group1) => group1.groups2.flatMap((group2) => (
-          group2.groups3.filter((group3) => group3.settingTypeId === editingType.id).map((group3) => group3.id)
-        )))
-        setSavedRowDrafts((current) => {
-          const next = { ...current }
-          affectedGroup3Ids.forEach((id) => {
-            const draft = next[id]
-            if (draft) next[id] = { ...draft, coefficientD: nextD, coefficientT: nextT }
-          })
-          return next
-        })
-      }
-      setData(updated)
-      setErrorMessage('')
-      return true
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Không thể lưu thiết lập.')
-      return false
-    }
-  }
-
-  function resetSettingTypeName() {
-    const currentEditingType = data.settingTypes.find((item) => item.id === editingTypeId)
-    if (!currentEditingType) return
-
-    const defaultName = defaultSettingTypeName(currentEditingType)
-    try {
-      const updated = renameSettingType(data, currentEditingType.id, defaultName)
-      setData(updated)
-      setEditingTypeName(defaultName)
-      setSuccessMessage(`Đã khôi phục tên ${defaultName}.`)
-      setErrorMessage('')
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Không thể khôi phục tên mặc định.')
-    }
-  }
-
-  function selectTypeForEditing(type: SettingTypeDefinition) {
-    if (type.id !== editingTypeId) {
-      if (!persistEditingType()) return
-      setEditingTypeId(type.id)
-      setEditingTypeName(type.name)
-      setEditingTypeD(type.defaultCoefficientD ?? '')
-      setEditingTypeT(type.defaultCoefficientT ?? '')
-      setEditingTypeCoefficientsByCount(createCountCoefficientDraft(type))
-    }
-    const content = typeNameInputRef.current?.closest<HTMLElement>('.sheet-content')
-    if (content) content.scrollTop = 0
-    typeNameInputRef.current?.focus({ preventScroll: true })
-    requestAnimationFrame(() => { const input = typeNameInputRef.current; if (input) input.setSelectionRange(input.value.length, input.value.length) })
-  }
-
-  function updateCountCoefficient(key: ListingCountKey, field: 'coefficientD' | 'coefficientT', value: string) {
-    setEditingTypeCoefficientsByCount((current) => ({
-      ...current,
-      [key]: { ...current[key], [field]: value },
-    }))
-  }
+  function openTypesManagement() { setManagementPanel('types') }
 
   function closeManagementPanel() {
-    if (managementPanel === 'types' && !persistEditingType()) return
     if (managementPanel === 'date' && !persistDateDraft()) return
     setManagementPanel(null)
   }
@@ -1542,6 +1288,7 @@ function App() {
 
   return (
     <main onFocusCapture={(event) => { const input = event.target; if (input instanceof HTMLTextAreaElement || (input instanceof HTMLInputElement && ['text', 'password'].includes(input.type))) requestAnimationFrame(() => { if (document.activeElement === input) input.setSelectionRange(input.value.length, input.value.length) }) }} className={`${screen === 'page' ? 'app-shell app-shell-page' : 'app-shell'}${entryDock ? ' is-entry-docked' : ''}`}>
+      {managementPanel === 'types' && <NameCoefficients catalog name="" types={data.settingTypes} onClose={()=>setManagementPanel(null)} onSave={types=>setData(current=>({...current,settingTypes:types}))} sharedConfig={<fieldset className="all-config"><legend>Cài đặt chung cho Tin nhắn</legend>{([['markers','Ký tự xác định điểm'],['separators','Ký tự phân tách']] as const).map(([field,label])=><label key={field}>{label}<input aria-label={label} value={sharedAllConfig(data.settingTypes,data.allInputConfig)[field]} onChange={event=>{const value=event.target.value;setData(current=>({...current,allInputConfig:{...sharedAllConfig(current.settingTypes,current.allInputConfig),[field]:value}}))}} /></label>)}</fieldset>} />}
       {nameCoefficientOpen && selectedGroup2 && <NameCoefficients name={selectedGroup2.name} types={coefficientTypesForName(data, selectedGroup2.name)} onClose={()=>{setNameCoefficientOpen(false)}} onSave={types=>{setData(current=>({...current,nameCoefficientTypes:{...current.nameCoefficientTypes,[group2NameKey(selectedGroup2.name)]:types}}))}} />}
       {screen === 'page' && (
         <>
@@ -1738,6 +1485,7 @@ function App() {
             <aside className={`editor-sheet panel-${activePanel}`} hidden={Boolean(entryDock)} aria-label="Bảng công cụ">
               <div className="sheet-header">
                 <h2>{activePanel === 'edit' ? 'Sửa' : activePanel === 'results' ? 'Kết quả' : 'Xem'}</h2>
+                {activePanel === 'view' && (<label className="view-private-coefficients"><input type="checkbox" checked={usePrivateCoefficients} onChange={event=>setUsePrivateCoefficients(event.target.checked)} />Hệ số riêng</label>)}
                 <button className="sheet-close" type="button" onClick={closeActivePanel} aria-label="Đóng"><AppIcon name="close" /></button>
               </div>
 
@@ -1788,7 +1536,7 @@ function App() {
                       </div>
 
                       {activeSettingType && <div className="setting-entry-editor" aria-label="Dữ liệu nhóm thiết lập">
-                        {savedEntriesForType.map(group3 => <div key={group3.id} className={`message-data-row${group3.allSourceId ? ' from-all' : ''}`}><span>{group3.listing}</span><span> | {group3.point} Điểm</span></div>)}
+                        {savedEntriesForType.map(group3 => <div key={group3.id} className={`message-data-row${group3.allSourceId ? ' from-all' : ''}`}><span>{group3.specialListing ? `kép ${activeSettingType.formulaId === 'da' ? 'A' : 'B'}` : group3.listing}</span><span> | {group3.point} Điểm</span></div>)}
                       </div>}
                     </>
                   )}
@@ -1799,7 +1547,7 @@ function App() {
 
               {activePanel === 'view' && (
                 <div className="sheet-content view-options">
-                  <label className="view-private-coefficients"><input type="checkbox" checked={usePrivateCoefficients} onChange={event=>setUsePrivateCoefficients(event.target.checked)} />Hệ số riêng</label>
+                  
                   <button className={a4Mode === 'combined' ? 'view-option is-active' : 'view-option'} type="button" onClick={() => chooseView('combined')}><AppIcon name="pages" /><span>Toàn bộ</span><AppIcon name="check" /></button>
                   {selectedGroup1.groups2.map((group2) => (
                     <button className={a4Mode === 'group2' && selectedGroup2Id === group2.id ? 'view-option is-active' : 'view-option'} type="button" key={group2.id} onClick={() => chooseView('group2', group2.id)}><AppIcon name="user" /><span>{group2.name}</span><AppIcon name="check" /></button>
@@ -1809,8 +1557,8 @@ function App() {
             </aside>
           )}
 
-          {toolbarVisible && activePanel === 'edit' && managementPanel && (
-            <div className={`management-modal-backdrop${managementPanel === 'types' ? ' is-type-manager' : ''}`} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeManagementPanel() }}>
+          {toolbarVisible && activePanel === 'edit' && managementPanel && managementPanel !== 'types' && (
+            <div className="management-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeManagementPanel() }}>
               <section className={`management-modal management-${managementPanel}`} role="dialog" aria-modal="true" aria-label={managementPanel === 'date' ? 'Chỉnh sửa ngày' : managementPanel === 'groups' ? 'Xóa nhóm' : 'Cài đặt nhóm thiết lập'}>
                 <div className="sheet-header">
                   <div className="sheet-header-title-row">
@@ -1855,66 +1603,7 @@ function App() {
                   </div>
                 )}
 
-                {managementPanel === 'types' && (
-                  <div className="sheet-content compact-form">
-                    <fieldset className="all-config all-shared-config">
-                      <legend>Cài đặt chung cho Tin nhắn</legend>
-                      {([['markers', 'Ký tự xác định điểm'], ['separators', 'Ký tự phân tách']] as const).map(([field, label]) => <label key={field}>{label}<input aria-label={label} value={sharedAllConfig(data.settingTypes, data.allInputConfig)[field]} onChange={event => { const value = event.target.value; setData(current => ({...current, allInputConfig: {...sharedAllConfig(current.settingTypes, current.allInputConfig), [field]: value}})) }} /></label>)}
-                    </fieldset>
-                    {editingType && (
-                      <div className="type-editor">
-                        <div className="type-name-row">
-                          <input ref={typeNameInputRef} className="type-name-input" aria-label="Tên thiết lập" value={editingTypeName} onChange={(event) => setEditingTypeName(event.target.value)} />
 
-                        </div>
-                        <div className="all-config">
-                          {([['allAliases','Tên khác',allConfig(editingType).aliases]] as const).map(([field,label,value])=><label key={field}>{label}<input aria-label={label} value={value} onChange={event=>setData(current=>({...current,settingTypes:current.settingTypes.map(t=>t.id===editingType.id?{...t,[field]:event.target.value}:t)}))}/></label>)}
-                        </div>
-                        <div className="inline-type-coefficients">
-                        {isProfileCoefficientFormula(editingType.formulaId) ? (
-                          <div className="count-coefficient-settings">
-                            <p>{editingType.formulaId === 'da' || editingType.formulaId === 'db' ? 'Hệ số áp dụng theo độ dài chữ số trong ô Liệt kê.' : 'Hệ số áp dụng theo số lượng số trong ô Liệt kê.'}</p>
-                            {getCoefficientProfileKeys(editingType.formulaId).map((key) => (
-                              <div className="count-coefficient-row" key={key}>
-                                <strong>{editingType.formulaId === 'da' || editingType.formulaId === 'db' ? `${key} chữ số` : `${key} số`}</strong>
-                                <label>Hệ số Đánh<input value={editingTypeCoefficientsByCount[key].coefficientD} onChange={(event) => updateCountCoefficient(key, 'coefficientD', event.target.value)} inputMode="decimal" /></label>
-                                <label>Hệ số Trúng<input value={editingTypeCoefficientsByCount[key].coefficientT} onChange={(event) => updateCountCoefficient(key, 'coefficientT', event.target.value)} inputMode="decimal" /></label>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="coefficient-fields">
-                            <label>Hệ số Đánh<input value={editingTypeD} onChange={(event) => setEditingTypeD(event.target.value)} inputMode="decimal" /></label>
-                            <label>Hệ số Trúng<input value={editingTypeT} onChange={(event) => setEditingTypeT(event.target.value)} inputMode="decimal" /></label>
-                          </div>
-                        )}
-                        <button className="button-secondary type-reset-name-button" type="button" onClick={resetSettingTypeName}>Reset tên thiết lập này</button>
-                        </div>
-                      </div>
-                    )}
-                    <div className="type-catalog-list">
-                      {data.settingTypes.map((type) => (
-                        <div
-                          className={`type-catalog-row draggable-type-row${editingTypeId === type.id ? ' is-active' : ''}${draggingTypeId === type.id ? ' is-dragging' : ''}${typeDropTargetId === type.id && draggingTypeId ? ' is-drop-target' : ''}`}
-                          key={type.id}
-                          data-sort-type={type.id}
-                        >
-                          <button
-                            className="drag-handle"
-                            type="button"
-                            onPointerDown={(event) => startSettingTypeDrag(event, type.id)}
-                            onPointerMove={trackSettingTypeDrag}
-                            onPointerUp={finishSettingTypeDrag}
-                            onPointerCancel={cancelSettingTypeDrag}
-                            aria-label={`Kéo để sắp xếp ${type.name}`}
-                            title="Kéo để sắp xếp"
-                          ><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="6" r="1.4"/><circle cx="16" cy="6" r="1.4"/><circle cx="8" cy="12" r="1.4"/><circle cx="16" cy="12" r="1.4"/><circle cx="8" cy="18" r="1.4"/><circle cx="16" cy="18" r="1.4"/></svg></button>
-                          <button type="button" className={`catalog-type${editingTypeId === type.id ? ' is-active' : ''}`} onPointerDown={(event) => event.preventDefault()} onClick={() => selectTypeForEditing(type)}>{type.name}</button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
               </section>
             </div>

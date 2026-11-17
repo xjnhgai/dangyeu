@@ -14,7 +14,7 @@ export function paperSections(sections: A4ProjectionSectionV2[], columnHeight = 
     const budget = Math.max(NUMBER_HEIGHT + ENTRY_PADDING, columnHeight - titleHeight - RESULTS_HEIGHT)
     const chunks: { entries: { entry: A4ProjectionSectionV2['entries'][number]; start: number; end: number; showPoint: boolean }[]; used: number }[] = [{ entries: [], used: 0 }]
     for (const entry of section.entries) {
-      const count = Math.max(1, splitSeparatedValuesV2(entry.group3.listing).length)
+      const count = entry.group3.specialListing ? 1 : Math.max(1, splitSeparatedValuesV2(entry.group3.listing).length)
       const entryHeight = count * NUMBER_HEIGHT + ENTRY_PADDING
       if (chunks.at(-1)!.used && entryHeight <= budget && chunks.at(-1)!.used + entryHeight > budget) chunks.push({ entries: [], used: 0 })
       for (let start = 0; start < count;) {
@@ -29,7 +29,7 @@ export function paperSections(sections: A4ProjectionSectionV2[], columnHeight = 
     return chunks.map((chunk, index) => ({
       ...section, ...chunk, index, last: index === chunks.length - 1, newRow: false,
       height: titleHeight + chunk.used + RESULTS_HEIGHT,
-      pointTotal: section.entries.reduce((sum, entry) => sum + parseSettingNumberListV2(entry.group3.listing, entry.settingType.formulaId).length * (Number(entry.group3.point) || 0), 0),
+      pointTotal: section.entries.reduce((sum, entry) => sum + (['xa', 'xb'].includes(entry.settingType.formulaId) ? 1 : parseSettingNumberListV2(entry.group3.listing, entry.settingType.formulaId).length) * (Number(entry.group3.point) || 0), 0),
     }))
   })
 }

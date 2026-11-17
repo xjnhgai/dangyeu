@@ -24,7 +24,7 @@ it('groups the preview by type once and saves multiple messages independently',(
  fireEvent.blur(input)
  const firstId=changes.mock.lastCall![0].allEntries[0].id
  fireEvent.click(screen.getByRole('button',{name:'Thêm Tin nhắn'}))
- fireEvent.change(input,{target:{value:'đề b KÉP.2n'}})
+ fireEvent.change(input,{target:{value:'KÉP b 2n'}})
  fireEvent.blur(input)
  expect(changes.mock.lastCall![0].groups3).toHaveLength(4)
  fireEvent.click(screen.getByRole('button',{name:'Tin 1'}))

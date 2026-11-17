@@ -51,22 +51,22 @@ function defaultType(data: CalculationDataV2) {
 }
 
 describe('three-level V2 tree', () => {
-  it('creates the catalog with independent coefficients defaulting to one', () => {
+  it('creates the catalog with independent formula-specific coefficient defaults', () => {
     const data = base()
     expect(data.settingTypes.map((item) => [item.name, item.formulaId])).toEqual([
       ['LB', 'lb'], ['LA', 'la'], ['ĐA', 'da'], ['ĐB', 'db'],
       ['CA', 'ca'], ['CB', 'cb'], ['XA', 'xa'], ['XB', 'xb'],
     ])
-    expect(defaultType(data).defaultCoefficientD).toBe('1')
-    expect(defaultType(data).defaultCoefficientT).toBe('1')
+    expect(defaultType(data).defaultCoefficientD).toBe('21,8')
+    expect(defaultType(data).defaultCoefficientT).toBe('80')
   })
 
   it('creates ĐA/ĐB coefficient profiles by digit width', () => {
     const data = base()
     const da = data.settingTypes.find((item) => item.formulaId === 'da')!
     const db = data.settingTypes.find((item) => item.formulaId === 'db')!
-    expect(da.defaultCoefficientsByCount).toEqual({ '2': { coefficientD: '1', coefficientT: '1' }, '3': { coefficientD: '1', coefficientT: '1' } })
-    expect(db.defaultCoefficientsByCount).toEqual({ '2': { coefficientD: '1', coefficientT: '1' }, '3': { coefficientD: '1', coefficientT: '1' } })
+    expect(da.defaultCoefficientsByCount).toEqual({ '2': { coefficientD: '0,74', coefficientT: '70' }, '3': { coefficientD: '0,74', coefficientT: '40000' } })
+    expect(db.defaultCoefficientsByCount).toEqual({ '2': { coefficientD: '0,74', coefficientT: '70' }, '3': { coefficientD: '0,74', coefficientT: '40000' } })
     const configured = updateSettingTypeDefaults(data, da.id, {
       coefficientsByCount: {
         '2': { coefficientD: '1', coefficientT: '2' },
@@ -80,11 +80,11 @@ describe('three-level V2 tree', () => {
     expect(threeDigitRow.coefficientsByCount?.['3']).toEqual({ coefficientD: '3', coefficientT: '4' })
   })
 
-  it('creates XA/XB definitions with independent coefficient defaults for 2–5 listed numbers', () => {
+  it('creates XA/XB definitions with independent coefficient defaults for 2–4 listed numbers', () => {
     const data = base()
     const xa = data.settingTypes.find((item) => item.formulaId === 'xa')!
     expect(xa.name).toBe('XA')
-    expect(Object.values(xa.defaultCoefficientsByCount ?? {})).toEqual(Array.from({ length: 4 }, () => ({ coefficientD: '1', coefficientT: '1' })))
+    expect(Object.values(xa.defaultCoefficientsByCount ?? {})).toEqual(['10','35','100'].map(coefficientT => ({coefficientD:'0,65',coefficientT})))
     const updated = updateSettingTypeDefaults(data, xa.id, {
       coefficientsByCount: {
         '2': { coefficientD: '1', coefficientT: '2' },
@@ -113,8 +113,8 @@ describe('three-level V2 tree', () => {
     const updated = add(data, g3('entry-1'))
     expect(entries(updated)).toHaveLength(1)
     expect(defaultType(updated)).toEqual(defaultType(data))
-    expect(defaultType(updated).defaultCoefficientD).toBe('1')
-    expect(defaultType(updated).defaultCoefficientT).toBe('1')
+    expect(defaultType(updated).defaultCoefficientD).toBe('21,8')
+    expect(defaultType(updated).defaultCoefficientT).toBe('80')
   })
 
   it('ignores stale or blank row coefficients when adding a new entry', () => {
@@ -146,8 +146,8 @@ describe('three-level V2 tree', () => {
       coefficientT: '888',
     })
     // Editing a saved entry cannot rewrite catalog coefficients.
-    expect(defaultType(updated).defaultCoefficientD).toBe('1')
-    expect(defaultType(updated).defaultCoefficientT).toBe('1')
+    expect(defaultType(updated).defaultCoefficientD).toBe('21,8')
+    expect(defaultType(updated).defaultCoefficientT).toBe('80')
   })
 
   it('clears D default independently from T', () => {

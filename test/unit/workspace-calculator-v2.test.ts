@@ -177,7 +177,7 @@ describe('V2 workspace calculation', () => {
     expect(result.settingResults.get('xb-3')?.t).toBe(30)
   })
 
-  it('selects XA/XB coefficient pairs independently for listings of 2, 3, 4 and 5 numbers', () => {
+  it('selects XA/XB coefficient pairs independently for listings of 2, 3 and 4 numbers', () => {
     let data = dataWithTwoGroups({ oneToSeven: ['12000', '98000', '34000', '45000', '56000'], gdb: '78999' })
     const xaType = data.settingTypes.find((type) => type.formulaId === 'xa')!
     const coefficientPairs = {
@@ -187,7 +187,7 @@ describe('V2 workspace calculation', () => {
       '5': { coefficientD: '8', coefficientT: '9' },
     }
     const sourceNumbers = ['12', '98', '34', '45', '56']
-    for (const count of [2, 3, 4, 5] as const) {
+    for (const count of [2, 3, 4] as const) {
       data = addGroup3V2(data, 'date-1', 'g-obito', item(`xa-${count}`, {
         settingTypeId: xaType.id,
         listing: sourceNumbers.slice(0, count).join(' '),
@@ -197,8 +197,8 @@ describe('V2 workspace calculation', () => {
     }
     xaType.defaultCoefficientsByCount = coefficientPairs
     const result = calculateWorkspaceForA4V2(data, { mode: 'group2', group1Id: 'date-1', group2Id: 'g-obito' })
-    expect([2, 3, 4, 5].map((count) => result.settingResults.get(`xa-${count}`)?.d)).toEqual([20, 40, 60, 80])
-    expect([2, 3, 4, 5].map((count) => result.settingResults.get(`xa-${count}`)?.t)).toEqual([30, 50, 70, 90])
+    expect([2, 3, 4].map((count) => result.settingResults.get(`xa-${count}`)?.d)).toEqual([20, 40, 60])
+    expect([2, 3, 4].map((count) => result.settingResults.get(`xa-${count}`)?.t)).toEqual([30, 50, 70])
   })
 
   it('rejects an XA/XB row when the coefficient pair for its detected length is missing', () => {

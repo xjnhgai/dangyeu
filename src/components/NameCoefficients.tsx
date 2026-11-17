@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
+import { allConfig } from '../core/all-input'
 import type { ListingCountKey, SettingTypeDefinition } from '../core/models-v2'
 import { getCoefficientProfileKeys, parseCoefficientTextV2 } from '../core/workspace-calculator-v2'
 
@@ -18,7 +19,8 @@ function writeField(types: SettingTypeDefinition[], { id, field, key }: Target, 
   } : { ...type, [field === 'coefficientD' ? 'defaultCoefficientD' : 'defaultCoefficientT']: value })
 }
 
-export default function NameCoefficients({ name, types, onSave, onClose }: {
+export default function NameCoefficients({ name, types, onSave, onClose, catalog = false, sharedConfig }: {
+  catalog?: boolean; sharedConfig?: ReactNode
   name: string; types: SettingTypeDefinition[]
   onSave: (types: SettingTypeDefinition[]) => void; onClose: () => void
 }) {
@@ -52,17 +54,41 @@ export default function NameCoefficients({ name, types, onSave, onClose }: {
     return true
   }
 
-  return <div className="management-modal-backdrop">
-    <section className="management-modal name-coefficients-modal" role="dialog" aria-modal="true" aria-label={`Hệ số theo tên ${name}`}>
-      <header className="sheet-header"><h2>Hệ số · {name}</h2><button className="sheet-close" type="button" onPointerDown={event => event.preventDefault()} onClick={() => { if (save([...dirty.current.values()])) onClose() }} aria-label="Đóng hệ số theo tên">×</button></header>
+  function metadata(id: string, field: 'name' | 'allAliases' | 'kepName' | 'kepAliases', value: string) {
+    setDraft(current => current.map(type => type.id === id ? {...type, [field]: value} : type))
+    const errorKey = `${id}:metadata:${field}`
+    const key = value.trim().normalize('NFC').toLocaleLowerCase('vi')
+    const invalidName = (field === 'name' || field === 'kepName') && (!key || saved.current.some(type => type.id !== id && [type.name, type.kepName].some(name => name?.trim().normalize('NFC').toLocaleLowerCase('vi') === key)))
+    setErrors(current => { const next = {...current}; if (invalidName) next[errorKey] = 'Tên không được trống hoặc trùng.'; else delete next[errorKey]; return next })
+    if (invalidName) return
+    const next = saved.current.map(type => type.id === id ? {...type, [field]: value} : type)
+    saved.current = next
+    setDraft(current => current.map(type => type.id === id ? {...type, [field]: value} : type))
+    onSave(next)
+  }
+  return <div className="management-modal-backdrop coefficient-settings-backdrop">
+    <section className="management-modal name-coefficients-modal" role="dialog" aria-modal="true" aria-label={catalog ? 'Cài đặt nhóm thiết lập' : `Hệ số theo tên ${name}`}>
+      <header className="sheet-header"><h2>{catalog ? 'Cài đặt nhóm thiết lập' : `Hệ số · ${name}`}</h2><button className="sheet-close" type="button" onPointerDown={event => event.preventDefault()} onClick={() => { if (save([...dirty.current.values()]) && !Object.keys(errors).some(key => key.includes(':metadata:'))) onClose() }} aria-label={catalog ? 'Đóng cửa sổ chỉnh sửa' : 'Đóng hệ số theo tên'}>×</button></header>
       <div className="sheet-content compact-form">
+        {sharedConfig}
         {draft.map(type => {
           const keys: (ListingCountKey | undefined)[] = getCoefficientProfileKeys(type.formulaId)
           if (!keys.length) keys.push(undefined)
           const byDigits = type.formulaId === 'da' || type.formulaId === 'db'
-          return <fieldset key={type.id}><legend>{type.name}</legend>{keys.map(key => {
+          return <fieldset key={type.id}><legend>{type.name}</legend>
+            {catalog && <div className="catalog-metadata">
+              <label>Đổi tên<input aria-label={`Tên thiết lập ${type.formulaId}`} value={type.name} onChange={e=>metadata(type.id, 'name', e.target.value)} /></label>
+              <button type="button" onClick={()=>metadata(type.id, 'name', ({da:'ĐA',db:'ĐB'} as Record<string,string>)[type.formulaId] ?? type.formulaId.toUpperCase())}>Reset tên</button>
+              <label>Tên khác<input aria-label={`Tên khác ${type.formulaId}`} value={allConfig(type).aliases.replaceAll('%','&')} onChange={e=>metadata(type.id, 'allAliases', e.target.value)} /></label>
+              {byDigits && <fieldset><legend>{type.formulaId === 'da' ? 'kép A' : 'kép B'}</legend>
+                <label>Đổi tên<input aria-label={`Tên kép ${type.formulaId}`} value={type.kepName ?? `kép ${type.formulaId === 'da' ? 'a' : 'b'}`} onChange={e=>metadata(type.id, 'kepName', e.target.value)} /></label>
+                <button type="button" onClick={()=>metadata(type.id, 'kepName', `kép ${type.formulaId === 'da' ? 'a' : 'b'}`)}>Reset tên kép</button>
+                <label>Tên khác<input aria-label={`Tên khác kép ${type.formulaId}`} value={type.kepAliases ?? `kep ${type.formulaId === 'da' ? 'a' : 'b'}`} onChange={e=>metadata(type.id, 'kepAliases', e.target.value)} /></label>
+              </fieldset>}
+            </div>}
+            {keys.map(key => {
             const suffix = key ? `${key} ${byDigits ? 'chữ số' : 'số'}` : ''
-            return <div className="coefficient-fields" key={key ?? 'scalar'}>
+  return <div className="coefficient-fields" key={key ?? 'scalar'}>
               {key && <strong>{suffix}</strong>}
               {(['coefficientD', 'coefficientT'] as const).map((field, index) => {
                 const target = { id: type.id, field, key }

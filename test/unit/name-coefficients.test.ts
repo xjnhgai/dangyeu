@@ -38,9 +38,9 @@ const cases: [FormulaId, string, number, number, number, number][] = [
   ['da','12 99',10,15,35,55], ['da','121 999',10,15,35,55],
   ['db','70 99',10,15,35,55], ['db','170 999',10,15,35,55],
   ['xa','12 07',10,15,35,55], ['xa','12 07 59',10,15,35,55],
-  ['xa','12 07 59 14',10,15,35,55], ['xa','12 07 59 14 88',10,15,35,55],
+  ['xa','12 07 59 14',10,15,35,55],
   ['xb','70 12',10,15,35,55], ['xb','70 12 95',10,15,35,55],
-  ['xb','70 12 95 41',10,15,35,55], ['xb','70 12 95 41 99',10,15,35,55],
+  ['xb','70 12 95 41',10,15,35,55],
 ]
 describe('coefficient sources and hand-calculated results', () => {
   it.each(cases)('%s listing %s uses the right scope and coefficients', (formula,listing,d,t,ownD,ownT) => {
@@ -135,6 +135,6 @@ it('defaults to shared rates in either view and applies each name separately whe
  expect(calc(false)).toMatchObject({d:40,t:60})
  expect(calc(true,'group')).toMatchObject({d:70,t:110})
  expect(calc(true,'other')).toMatchObject({d:130,t:170})
- expect(calc(true)).toMatchObject({d:200,t:280})
+ expect(calc(true)).toMatchObject({d:40,t:60})
  expect(calc(false)).toMatchObject({d:40,t:60})
 })

@@ -43,7 +43,7 @@ export default function AllEditor({ group, types, config, onChange, onClose }: {
     {error&&<p role="status">{error}</p>}
     {!!parsed.rows.length&&<div className="all-preview" aria-label="Dữ liệu đã phân nhóm">{types.map(type=>{
       const rows=parsed.rows.filter(row=>row.typeId===type.id)
-      return rows.length ? <div key={type.id} className="message-preview-group"><strong>{type.name}:</strong><div>{rows.map((row,i)=><div className="message-data-row" key={i}><span>{row.listing}</span><span> | {row.point} Điểm</span></div>)}</div></div> : null
+      return rows.length ? <div key={type.id} className="message-preview-group"><strong>{type.name}:</strong><div>{rows.map((row,i)=><div className="message-data-row" key={i}><span>{row.specialListing ? `kép ${type.formulaId === 'da' ? 'A' : 'B'}` : row.listing}</span><span> | {row.point} Điểm</span></div>)}</div></div> : null
     })}</div>}
   </section>
 }

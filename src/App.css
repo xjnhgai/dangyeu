@@ -2195,3 +2195,14 @@ body:has(.app-shell-page) { position: fixed; inset: 0; width: 100%; overflow: hi
 .entry-keypad button:active { background: #cba8c0; }
 .entry-keypad button:disabled { opacity: .35; }
 .entry-dock-fields :focus { outline: 2px solid #a4537c; outline-offset: 1px; }
+
+/* Shared full-height settings and consistent plain-text message typography. */
+.management-modal.name-coefficients-modal { width: min(100vw, 560px); height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; display: flex; flex-direction: column; }
+.name-coefficients-modal .sheet-content { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+.name-coefficients-modal .sheet-header { flex-shrink: 0; padding-top: max(12px, env(safe-area-inset-top)); }
+.catalog-metadata { display: grid; gap: 8px; margin-bottom: 12px; }
+.sheet-header .view-private-coefficients { display: flex; flex-direction: row; align-items: center; gap: 4px; font-size: 11px; margin: 0 8px 0 auto; white-space: nowrap; }
+.message-editor .all-text-editor textarea, .message-editor .all-text-highlight, .message-editor .all-text-highlight mark { font-family: Arial, sans-serif !important; font-size: 16px !important; font-weight: 400; line-height: 1.5 !important; letter-spacing: normal; }
+.message-editor .all-preview { font-family: Arial, sans-serif; }
+
+.management-modal-backdrop.coefficient-settings-backdrop { padding: 0; align-items: start; }

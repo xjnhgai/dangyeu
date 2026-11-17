@@ -290,9 +290,9 @@ describe('additional formula calculations CA, CB, XA and XB', () => {
     expect(result.listingMatchFlags).toEqual([true, true, true])
   })
 
-  it('requires 2–5 numbers for XA/XB', () => {
-    expect(() => calculateSetting({ listing: ['12'], oneToSeven: ['12345'], point: 1, coefficientD: 1, coefficientT: 1, formulaId: 'xa' })).toThrow(/2, 3, 4 hoặc 5/)
-    expect(() => calculateSetting({ listing: ['12', '23', '34', '45', '56', '67'], oneToSeven: ['12345'], point: 1, coefficientD: 1, coefficientT: 1, formulaId: 'xb' })).toThrow(/2, 3, 4 hoặc 5/)
+  it('requires 2–4 numbers for XA/XB', () => {
+    expect(() => calculateSetting({ listing: ['12'], oneToSeven: ['12345'], point: 1, coefficientD: 1, coefficientT: 1, formulaId: 'xa' })).toThrow(/2, 3 hoặc 4/)
+    expect(() => calculateSetting({ listing: ['12', '23', '34', '45', '56', '67'], oneToSeven: ['12345'], point: 1, coefficientD: 1, coefficientT: 1, formulaId: 'xb' })).toThrow(/2, 3 hoặc 4/)
   })
 })
 

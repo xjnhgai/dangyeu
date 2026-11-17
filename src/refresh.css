@@ -319,7 +319,7 @@ html:has(.app-shell-page), body:has(.app-shell-page) { overscroll-behavior: none
 .all-text-editor { position:relative; }
 .all-editor .all-text-editor textarea, .all-text-highlight {
   margin:0; width:100%; box-sizing:border-box; padding:10px;
-  border:1px solid transparent; font:18px/1.5 monospace;
+  border:1px solid transparent; font:16px/1.5 Arial, sans-serif;
   letter-spacing:normal; white-space:pre-wrap; overflow-wrap:anywhere; word-break:normal; tab-size:4;
 }
 .all-text-highlight { position:absolute; inset:0; pointer-events:none; color:#253042; overflow:hidden; }

@@ -1,15 +1,15 @@
 import type { AllInputConfig, Group2, SettingTypeDefinition } from './models-v2'
 import { parseSettingNumberListV2, parsePointTextV2, getCoefficientProfileKey, isProfileCoefficientFormula } from './workspace-calculator-v2'
 import { createGroup3FromDefaults } from './tree-v2'
-const defaults: Record<string, string> = { la: 'lô a', lb: 'lô b', da: 'đề a', db: 'đề b', xa: 'xiên a', xb: 'xiên b%xiên', ca: 'càng a', cb: 'càng b' }
-export const allConfig = (type: SettingTypeDefinition) => ({ aliases: type.allAliases ?? defaults[type.formulaId] ?? '', markers: type.allPointMarkers ?? 'n%đ', separators: type.allSeparators ?? '.' })
-const parts = (s: string) => s.split('%').map(v => v.trim().replace(/\s+/g, ' ').normalize('NFC').toLocaleLowerCase('vi')).filter(Boolean)
+const defaults: Record<string, string> = { la: 'lô a', lb: 'lô b', da: 'đề a', db: 'đề b', xa: 'xiên a', xb: 'xiên b&xiên', ca: 'càng a', cb: 'càng b' }
+export const allConfig = (type: SettingTypeDefinition) => ({ aliases: type.allAliases ?? defaults[type.formulaId] ?? '', markers: type.allPointMarkers ?? 'n&đ&điểm', separators: type.allSeparators ?? '.' })
+const parts = (s: string) => s.split(/[&%]/).map(v => v.trim().replace(/\s+/g, ' ').normalize('NFC').toLocaleLowerCase('vi')).filter(Boolean)
 // Existing per-type settings are combined once as a compatible shared fallback.
 export function sharedAllConfig(types: readonly SettingTypeDefinition[], config?: AllInputConfig): AllInputConfig {
-  if (config) return config
+  if (config) return { markers: config.markers.replaceAll('%', '&'), separators: config.separators.replaceAll('%', '&') }
   return {
-    markers: [...new Set(types.flatMap(t => parts(allConfig(t).markers)))].join('%'),
-    separators: [...new Set(types.flatMap(t => parts(allConfig(t).separators)))].join('%'),
+    markers: [...new Set(types.flatMap(t => parts(allConfig(t).markers)))].join('&'),
+    separators: [...new Set(types.flatMap(t => parts(allConfig(t).separators)))].join('&'),
   }
 }
 export class AllInputError extends Error {
@@ -31,13 +31,20 @@ export function allErrorRange(text: string, fragment: string): { start: number; 
   return match ? { start: match.index, end: match.index + match[0].length } : null
 }
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-export interface AllRow { typeId: string; listing: string; point: string; source: string }
+export interface AllRow { typeId: string; listing: string; point: string; source: string; specialListing?: 'kep' }
 export function parseAll(text: string, types: readonly SettingTypeDefinition[], shared?: AllInputConfig): AllRow[] {
   const config = sharedAllConfig(types, shared)
-  const names = new Map<string, SettingTypeDefinition>()
+  const names = new Map<string, SettingTypeDefinition & { shortcut?: boolean }>()
   for (const type of types) for (const name of parts(`${type.name}%${allConfig(type).aliases}`)) {
     if (names.has(name) && names.get(name)!.id !== type.id) throw new Error(`Tên khác bị trùng: ${name}`)
     names.set(name, type)
+  }
+  for (const type of types.filter(t => t.formulaId === 'da' || t.formulaId === 'db')) {
+    const suffix = type.formulaId === 'da' ? 'a' : 'b'
+    for (const name of parts(`${type.kepName ?? `kép ${suffix}`}&${type.kepAliases ?? `kep ${suffix}`}`)) {
+      if (names.has(name)) throw new Error(`Tên khác bị trùng: ${name}`)
+      names.set(name, {...type, shortcut: true})
+    }
   }
   const source = text.normalize('NFC').replace(/\s+/g, ' ')
   const pattern = new RegExp(`(?<![\\p{L}\\d])(?:${[...names.keys()].sort((a,b) => b.length-a.length).map(esc).join('|')})(?!\\p{L})`, 'giu')
@@ -63,16 +70,17 @@ export function parseAll(text: string, types: readonly SettingTypeDefinition[], 
       const raw = body.slice(cursor, pointMatch.index!+pointMatch[0].length).trim()
       const fragment = `${match[0]} ${raw}`
       const listText = body.slice(cursor, pointMatch.index).split(split).filter(Boolean).join(' ')
-      const checkedText = type.formulaId === 'da' || type.formulaId === 'db' ? listText.replace(/(?<![\p{L}\d])(?:kép|kep)(?![\p{L}\d])/giu, '') : listText
+      const checkedText = listText
       const unknown = checkedText.match(/[\p{L}][\p{L}\s]*/u)?.[0].trim()
       if (unknown) invalid(unknown)
       try {
         if (checkedText.split(' ').filter(Boolean).some(token=>!/^\d+$/.test(token))) throw new Error('Ký tự không được cấu hình')
-        const listing = parseSettingNumberListV2(listText, type.formulaId)
+        if (type.shortcut && listText) throw new Error('Kép chỉ nhận điểm')
+        const listing = type.shortcut ? Array.from({length: 10}, (_,i) => `${i}${i}`) : parseSettingNumberListV2(listText, type.formulaId)
         if (!listing.length || new Set(listing).size !== listing.length) throw new Error('Số trùng hoặc thiếu liệt kê')
         parsePointTextV2(pointMatch[1])
         if (isProfileCoefficientFormula(type.formulaId) && !getCoefficientProfileKey(type.formulaId, listing)) throw new Error('Sai độ dài')
-        rows.push({ typeId: type.id, listing: listing.join(', '), point: pointMatch[1], source: fragment })
+        rows.push({ typeId: type.id, listing: listing.join(', '), point: pointMatch[1], source: fragment, ...(type.shortcut ? {specialListing: 'kep' as const} : {}) })
       } catch { throw new AllInputError(fragment) }
       cursor=pointMatch.index!+pointMatch[0].length
     }
@@ -82,7 +90,7 @@ export function parseAll(text: string, types: readonly SettingTypeDefinition[], 
 }
 export function applyAll(group: Group2, types: readonly SettingTypeDefinition[], id: string, text: string, makeId: () => string, shared?: AllInputConfig): Group2 {
   const rows = parseAll(text, types, shared)
-  const generated = rows.map(row => ({ ...createGroup3FromDefaults(types.find(t=>t.id===row.typeId)!, makeId(), row.listing, row.point), allSourceId: id }))
+  const generated = rows.map(row => ({ ...createGroup3FromDefaults(types.find(t=>t.id===row.typeId)!, makeId(), row.listing, row.point), allSourceId: id, ...(row.specialListing ? {specialListing: row.specialListing} : {}) }))
   return { ...group, groups3: [...group.groups3.filter(row=>row.allSourceId!==id), ...generated], allEntries: upsertMessage(group, id, text) }
 }
 export function deleteAll(group: Group2, id: string): Group2 {
