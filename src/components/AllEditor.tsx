@@ -13,11 +13,11 @@ export default function AllEditor({ group, types, config, onChange, onClose }: {
   const ref=useRef<HTMLTextAreaElement>(null)
   useAutoHeight(ref,text)
   const parsed=useMemo(()=>{
-    if(!text.trim()) return {rows:[],error:'',fragment:''}
-    try { return {rows:parseAll(text,types,config),error:'',fragment:''} }
-    catch(e) { return {rows:[],error:(e as Error).message,fragment:e instanceof AllInputError ? e.fragment : ''} }
+    if(!text.trim()) return {rows:[],error:'',fragment:'',range:null}
+    try { return {rows:parseAll(text,types,config),error:'',fragment:'',range:null} }
+    catch(e) { return {rows:[],error:(e as Error).message,fragment:e instanceof AllInputError ? e.fragment : '',range:e instanceof AllInputError ? (e.range ?? null) : null} }
   },[text,types,config])
-  const range=allErrorRange(text,parsed.fragment)
+  const range=parsed.range ?? allErrorRange(text,parsed.fragment)
   const change=(value:string)=>{dirty.current=true;setText(value);setError('')}
   function save() {
     if(!dirty.current) return
