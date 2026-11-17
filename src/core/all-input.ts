@@ -63,10 +63,11 @@ export function parseAll(text: string, types: readonly SettingTypeDefinition[], 
       const raw = body.slice(cursor, pointMatch.index!+pointMatch[0].length).trim()
       const fragment = `${match[0]} ${raw}`
       const listText = body.slice(cursor, pointMatch.index).split(split).filter(Boolean).join(' ')
-      const unknown = listText.match(/[\p{L}][\p{L}\s]*/u)?.[0].trim()
+      const checkedText = type.formulaId === 'da' || type.formulaId === 'db' ? listText.replace(/(?<![\p{L}\d])(?:kép|kep)(?![\p{L}\d])/giu, '') : listText
+      const unknown = checkedText.match(/[\p{L}][\p{L}\s]*/u)?.[0].trim()
       if (unknown) invalid(unknown)
       try {
-        if (listText.split(' ').some(token=>!/^\d+$/.test(token))) throw new Error('Ký tự không được cấu hình')
+        if (checkedText.split(' ').filter(Boolean).some(token=>!/^\d+$/.test(token))) throw new Error('Ký tự không được cấu hình')
         const listing = parseSettingNumberListV2(listText, type.formulaId)
         if (!listing.length || new Set(listing).size !== listing.length) throw new Error('Số trùng hoặc thiếu liệt kê')
         parsePointTextV2(pointMatch[1])
@@ -82,8 +83,19 @@ export function parseAll(text: string, types: readonly SettingTypeDefinition[], 
 export function applyAll(group: Group2, types: readonly SettingTypeDefinition[], id: string, text: string, makeId: () => string, shared?: AllInputConfig): Group2 {
   const rows = parseAll(text, types, shared)
   const generated = rows.map(row => ({ ...createGroup3FromDefaults(types.find(t=>t.id===row.typeId)!, makeId(), row.listing, row.point), allSourceId: id }))
-  return { ...group, groups3: [...group.groups3.filter(row=>row.allSourceId!==id), ...generated], allEntries: [...(group.allEntries??[]).filter(row=>row.id!==id), {id,text}] }
+  return { ...group, groups3: [...group.groups3.filter(row=>row.allSourceId!==id), ...generated], allEntries: upsertMessage(group, id, text) }
 }
 export function deleteAll(group: Group2, id: string): Group2 {
   return {...group, groups3: group.groups3.filter(row=>row.allSourceId!==id), allEntries: (group.allEntries??[]).filter(row=>row.id!==id)}
+}
+
+function upsertMessage(group: Group2, id: string, text: string) {
+  const entries = group.allEntries ?? []
+  return entries.some(entry => entry.id === id) ? entries.map(entry => entry.id === id ? {id,text} : entry) : [...entries, {id,text}]
+}
+/** Invalid messages remain editable, but contribute no generated rows. */
+export function saveMessage(group: Group2, types: readonly SettingTypeDefinition[], id: string, text: string, makeId: () => string, config?: AllInputConfig): Group2 {
+  if (!text.trim()) return deleteAll(group, id)
+  try { return applyAll(group, types, id, text, makeId, config) }
+  catch { return {...deleteAll(group, id), allEntries: upsertMessage(group, id, text)} }
 }

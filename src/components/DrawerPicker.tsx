@@ -2,10 +2,10 @@ import { useEffect, useRef, useState, type ReactNode, type PointerEvent } from '
 import AppIcon from './AppIcon'
 
 type Item = { id: string; label: string; configured: boolean }
-export default function DrawerPicker({ items, selected, hidden, onHidden, onSelect, onReorder, kind, listLabel, actions }: {
+export default function DrawerPicker({ items, selected, hidden, onHidden, onSelect, onReorder, kind, listLabel, actions, leading }: {
   items: Item[]; selected: string; hidden: string[]; onHidden: (ids: string[]) => void
   onSelect: (id: string) => void; onReorder: (source: string, target: string) => void
-  kind: 'group2' | 'type'; listLabel: string; actions: ReactNode
+  kind: 'group2' | 'type'; listLabel: string; actions: ReactNode; leading?: ReactNode
 }) {
   const row = useRef<HTMLDivElement>(null)
   const measure = useRef<HTMLDivElement>(null)
@@ -74,7 +74,8 @@ export default function DrawerPicker({ items, selected, hidden, onHidden, onSele
     onClick={measuring ? undefined : () => { if (suppress.current) { suppress.current = false; return }; onSelect(item.id); setOpen(false) }}
   >{item.label}</button>
   return <div className={`drawer-picker drawer-${kind}`} data-picker-kind={kind}>
-    <div className="drawer-picker-row">
+    <div className={`drawer-picker-row${leading ? " has-leading" : ""}`}>
+      {leading}
       <div className="compact-chip-list drawer-visible" data-visible-row ref={row}>{items.filter((item) => visible.includes(item.id)).map((item) => chip(item))}</div>
       <button type="button" className={`icon-button drawer-trigger ${kind === 'type' ? 'type-overflow-trigger' : 'group2-overflow-trigger'}`} data-drawer-trigger aria-label={listLabel} aria-expanded={open} onClick={() => setOpen((value) => !value)}><AppIcon name="list" /></button>
       {actions}

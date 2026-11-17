@@ -1,5 +1,5 @@
 import type { A4ProjectionSectionV2 } from './a4-v2'
-import { splitSeparatedValuesV2 } from './workspace-calculator-v2'
+import { splitSeparatedValuesV2, parseSettingNumberListV2 } from './workspace-calculator-v2'
 
 export const PAPER_COLUMN_WIDTH = 14.88 * 96 / 25.4
 const TITLE_HEIGHT = 24
@@ -29,7 +29,7 @@ export function paperSections(sections: A4ProjectionSectionV2[], columnHeight = 
     return chunks.map((chunk, index) => ({
       ...section, ...chunk, index, last: index === chunks.length - 1, newRow: false,
       height: titleHeight + chunk.used + RESULTS_HEIGHT,
-      pointTotal: section.entries.reduce((sum, entry) => sum + (Number(entry.group3.point) || 0), 0),
+      pointTotal: section.entries.reduce((sum, entry) => sum + parseSettingNumberListV2(entry.group3.listing, entry.settingType.formulaId).length * (Number(entry.group3.point) || 0), 0),
     }))
   })
 }

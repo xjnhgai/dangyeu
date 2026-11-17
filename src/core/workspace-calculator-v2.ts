@@ -84,7 +84,7 @@ export function parseOneToSevenTextV2(text: string): string[] {
 
 /** Parse 00–99 listings generally; ĐA/ĐB accept homogeneous 2-digit or 3-digit lists. */
 export function parseSettingNumberListV2(text: string, formulaId?: FormulaId): string[] {
-  const values = splitSeparatedValuesV2(text)
+  const values = splitSeparatedValuesV2(text).flatMap(value => (formulaId === 'da' || formulaId === 'db') && /^(kép|kep)$/iu.test(value.normalize('NFC')) ? Array.from({length:10}, (_,i) => `${i}${i}`) : [value])
   const shorthand = formulaId === 'la' || formulaId === 'lb'
   const allowTwoOrThreeDigits = formulaId === 'da' || formulaId === 'db'
   const invalid = values.find((value) => !((allowTwoOrThreeDigits || shorthand) ? VALID_SETTING_NUMBER_DA_DB : VALID_SETTING_NUMBER).test(value))
@@ -216,11 +216,9 @@ export function calculateWorkspaceForA4V2(
   }
 
   const settingResults = new Map<EntityId, SettingCalculationResult>()
-  const types = selection.mode === 'group2'
-    ? coefficientTypesForName(data, projection.group2!.name) : data.settingTypes
-  const typesById = new Map(types.map(type => [type.id, type]))
+  const typesByGroup = new Map(projection.group1.groups2.map(group => [group.id, new Map((selection.usePrivateCoefficients ? coefficientTypesForName(data, group.name) : data.settingTypes).map(type => [type.id, type]))]))
   for (const entry of projection.entries) {
-    const type = typesById.get(entry.group3.settingTypeId)!
+    const type = typesByGroup.get(entry.group2Id)!.get(entry.group3.settingTypeId)!
     settingResults.set(entry.group3.id, calculateGroup3(entry.group3, projection.group1.drawData, type))
   }
   const summary = buildA4SummaryV2(projection, settingResults)

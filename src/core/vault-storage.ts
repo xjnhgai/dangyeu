@@ -32,6 +32,7 @@ export interface CalculationDraftV2 {
   screen: 'home' | 'page'
   selectedGroup1Id: EntityId | null
   selectedGroup2Id: EntityId | null
+  usePrivateCoefficients?: boolean
   a4Mode: 'combined' | 'group2'
   activeSettingTypeId: EntityId | null
   draftRowsByType: Record<string, Array<{
@@ -66,6 +67,7 @@ export interface StoredCalculationDataV2 {
 export interface CalculationWorkspaceEditorStateV2 {
   selectedGroup1Id: EntityId | null
   selectedGroup2Id: EntityId | null
+  usePrivateCoefficients?: boolean
   a4Mode: 'combined' | 'group2'
   activeSettingTypeId: EntityId | null
   draftRowsByType: CalculationDraftV2['draftRowsByType']

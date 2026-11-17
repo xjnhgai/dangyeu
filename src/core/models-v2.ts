@@ -65,8 +65,10 @@ export interface Group1 {
 
 /** The A4 view is either aggregated across all Group2 or isolated to one Group2. */
 export type A4PageSelectionV2 =
-  | { mode: 'combined'; group1Id: EntityId }
-  | { mode: 'group2'; group1Id: EntityId; group2Id: EntityId }
+  | { usePrivateCoefficients?: boolean
+    mode: 'combined'; group1Id: EntityId }
+  | { usePrivateCoefficients?: boolean
+    mode: 'group2'; group1Id: EntityId; group2Id: EntityId }
 
 export interface AllInputConfig { markers: string; separators: string }
 

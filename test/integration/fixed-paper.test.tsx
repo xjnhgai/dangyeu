@@ -38,5 +38,5 @@ it('renders Point, D and T as three distinct label/value pairs without duplicati
   render(<A4PageV2 projection={p} results={new Map()} summary={summary}/>)
   const totals=document.querySelectorAll('.a4-v2-section-results.is-visible')
   expect(totals).toHaveLength(1)
-  expect([...totals[0].children].map(node=>[node.querySelector('.a4-v2-result-label')?.textContent,node.querySelector('b')?.textContent])).toEqual([['Điểm:','10'],['Đánh:','80'],['Trúng:','100']])
+  expect([...totals[0].children].map(node=>[node.querySelector('.a4-v2-result-label')?.textContent,node.querySelector('b')?.textContent])).toEqual([['Điểm:','2.000'],['Đánh:','80'],['Trúng:','100']])
 })

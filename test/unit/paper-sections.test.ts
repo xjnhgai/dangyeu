@@ -13,7 +13,7 @@ it('wraps long groups into new rows without losing entries or repeating points',
  expect(slices.flatMap(s=>values.slice(s.start,s.end))).toEqual(values)
  expect(slices.filter(s=>s.showPoint)).toHaveLength(1)
  expect(chunks.filter(c=>c.last)).toHaveLength(1)
- expect(chunks.at(-1)?.pointTotal).toBe(5)
+ expect(chunks.at(-1)?.pointTotal).toBe(500)
  expect(entry.group3.listing).toBe(values.join(' '))
 })
 
@@ -44,4 +44,13 @@ it('reserves the measured height of wrapped setting titles',()=>{
  const entry={group2Id:'g',settingType:type,group3:createGroup3FromDefaults(type,'long',Array.from({length:150},()=> '12').join(' '),'5')}
  const layout=paperPages([{settingTypeId:type.id,title:'Tên thiết lập dài',entries:[entry]}],390,640,82,{[type.id]:60})
  for(const column of layout.pages.flat()) expect(82+column.height).toBeLessThanOrEqual(640*.9)
+})
+
+it('counts expanded numbers times points for every formula, including shorthand',()=>{
+ const types=createCalculationDataV2().settingTypes
+ for(const [formula,listing,expected] of [['lb','070 12',15],['la','121',10],['da','kép',50],['db','KEP',50],['da','12 34',10],['xb','12 34 56',15],['xa','12 34',10],['ca','12 34',10],['cb','12 34',10]] as const){
+  const type=types.find(t=>t.formulaId===formula)!
+  const entry={group2Id:'g',settingType:type,group3:createGroup3FromDefaults(type,'r',listing,'5')}
+  expect(paperSections([{settingTypeId:type.id,title:type.name,entries:[entry]}]).at(-1)?.pointTotal).toBe(expected)
+ }
 })

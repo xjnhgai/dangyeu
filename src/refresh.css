@@ -325,3 +325,18 @@ html:has(.app-shell-page), body:has(.app-shell-page) { overscroll-behavior: none
 .all-text-highlight { position:absolute; inset:0; pointer-events:none; color:#253042; overflow:hidden; }
 .all-text-highlight mark { color:#c52848; background:transparent; text-decoration:underline wavy; text-underline-offset:3px; }
 .all-editor .all-text-editor textarea { position:relative; display:block; color:transparent; -webkit-text-fill-color:transparent; caret-color:#253042; background:transparent; border-color:#d8c5d2; overflow:hidden; }
+
+/* Message input occupies the visible screen, including when the keyboard opens. */
+.entry-dock.message-editor { top:var(--visual-top,0px); bottom:auto; left:0; right:0; width:100%; height:var(--visible-height,100dvh); max-height:var(--visible-height,100dvh); box-sizing:border-box; border-radius:0; padding:12px max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); z-index:120; overscroll-behavior:contain; }
+.message-editor .entry-dock-heading { top:-12px; padding:12px 0; }
+.message-editor .all-preview { max-height:none; overflow:visible; margin-top:16px; }
+.all-text-highlight mark { text-decoration:none; }
+.all-text-highlight.is-invalid { color:#c52848; }
+.message-preview-group { display:grid; grid-template-columns:max-content minmax(0,1fr); gap:8px; margin:10px 0; }
+.message-data-row { display:block; padding:5px 0; overflow-wrap:anywhere; font-size:16px; line-height:1.5; }
+.message-data-row.from-all { color:#287d7d; background:transparent; }
+.view-private-coefficients { display:flex; align-items:center; gap:10px; padding:12px; font-weight:600; }
+.view-private-coefficients input { width:20px; height:20px; accent-color:#a4537c; }
+.drawer-picker-row.has-leading { grid-template-columns:max-content minmax(0,1fr) 34px 34px; }
+.drawer-picker-row.has-leading .all-trigger { grid-column:1; grid-row:1; width:auto; padding:6px 10px; white-space:nowrap; }
+.drawer-picker-row.has-leading .drawer-visible { grid-column:2; }
