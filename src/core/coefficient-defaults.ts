@@ -15,7 +15,7 @@ export function withCoefficientDefaults(type: SettingTypeDefinition): SettingTyp
     defaultCoefficientT: fallback(type.defaultCoefficientT, t),
     ...(keys.length ? { defaultCoefficientsByCount: Object.fromEntries(keys.map(key => [key, {
       coefficientD: fallback(type.defaultCoefficientsByCount?.[key]?.coefficientD, de ? fallback(type.defaultCoefficientD, d) : d),
-      coefficientT: fallback(type.defaultCoefficientsByCount?.[key]?.coefficientT, de ? (key === '3' ? '40000' : fallback(type.defaultCoefficientT, t)) : ({'2':'10','3':'35','4':'100','5':'1'}[key])),
+      coefficientT: fallback(type.defaultCoefficientsByCount?.[key]?.coefficientT, de ? (key === '3' ? '40000' : fallback(type.defaultCoefficientT, t)) : ({'2':'10','3':'35','4':'100'}[key])),
     }])) } : {}),
   }
 }

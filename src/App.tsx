@@ -1003,7 +1003,7 @@ function App() {
     try { parseSettingNumberListV2(row.listing, type.formulaId); parsePointTextV2(row.point) } catch (error) { setErrorMessage(error instanceof Error ? error.message : 'Dữ liệu chưa hợp lệ.'); return }
     if (!isDraftComplete(row, type)) {
       setErrorMessage(type.formulaId === 'xa' || type.formulaId === 'xb'
-        ? 'XA/XB cần 2–5 số, Điểm và đủ hệ số theo số lượng số trong danh sách.'
+        ? 'XA/XB cần 2–4 số, Điểm và đủ hệ số theo số lượng số trong danh sách.'
         : type.formulaId === 'da' || type.formulaId === 'db'
           ? 'ĐA/ĐB cần danh sách toàn số 2 chữ số hoặc toàn số 3 chữ số, Điểm và đủ hệ số tương ứng.'
           : 'Hãy nhập danh sách, điểm và cấu hình hệ số Đánh/Trúng cho thiết lập này.')
@@ -1060,7 +1060,7 @@ function App() {
         const profileKey = getCoefficientProfileKey(type.formulaId, listingValues)
         if (!profileKey) throw new Error(type.formulaId === 'da' || type.formulaId === 'db'
           ? 'ĐA/ĐB chỉ nhận danh sách toàn số 2 chữ số hoặc toàn số 3 chữ số.'
-          : 'XA/XB yêu cầu đúng 2, 3, 4 hoặc 5 số trong ô Liệt kê.')
+          : 'XA/XB yêu cầu đúng 2, 3 hoặc 4 số trong ô Liệt kê.')
         const defaultPair = type.defaultCoefficientsByCount?.[profileKey]
         const coefficientD = defaultPair?.coefficientD || ''
         const coefficientT = defaultPair?.coefficientT || ''

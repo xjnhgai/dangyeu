@@ -10,7 +10,7 @@ export interface DrawData {
 
 /** Stable formula identity, independent from editable display name and order. */
 export type FormulaId = 'lb' | 'la' | 'da' | 'db' | 'ca' | 'cb' | 'xa' | 'xb'
-export type ListingCountKey = '2' | '3' | '4' | '5'
+export type ListingCountKey = '2' | '3' | '4'
 
 export interface CoefficientPairText {
   coefficientD: NumericText | null
