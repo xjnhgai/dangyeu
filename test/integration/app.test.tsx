@@ -438,14 +438,14 @@ it('opens both coefficient settings without a publisher PIN and permits reset',a
  fireEvent.change(screen.getByLabelText('LB riêng Hệ số Trúng'),{target:{value:'4'}})
  fireEvent.click(screen.getByRole('button',{name:'Đóng cửa sổ chỉnh sửa'}))
  fireEvent.click(screen.getByRole('button',{name:'Cài đặt nhóm thiết lập'}))
- fireEvent.click(screen.getAllByRole('button',{name:'Reset tên',exact:true})[0])
+ fireEvent.click(screen.getByRole('button',{name:'Reset LB riêng'}))
  fireEvent.click(screen.getByRole('button',{name:'Đóng cửa sổ chỉnh sửa'}))
  fireEvent.click(screen.getByRole('button',{name:'Cài đặt hệ số theo tên'}))
  const input=screen.getByLabelText('LB Hệ số Đánh');fireEvent.change(input,{target:{value:'7'}});fireEvent.blur(input)
  fireEvent.click(screen.getByRole('button',{name:'Đóng hệ số theo tên'}))
  await waitFor(async()=>{
   const data=(await loadCalculationWorkspace())!.value.data
-  expect(data.settingTypes[0]).toMatchObject({name:'LB',defaultCoefficientD:'3',defaultCoefficientT:'4'})
+  expect(data.settingTypes[0]).toMatchObject({name:'LB',defaultCoefficientD:'21,8',defaultCoefficientT:'80'})
   expect(data.nameCoefficientTypes!.lan[0].defaultCoefficientD).toBe('7')
  },{timeout:3000})
 })

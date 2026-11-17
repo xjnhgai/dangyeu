@@ -925,7 +925,11 @@ function App() {
           }
         }
       }
-      setData(nextData)
+      // Removing a name also removes only its private coefficient record.
+      // Recreating that name will start from factory rates, without changing A4 entries.
+      const nameCoefficientTypes = { ...nextData.nameCoefficientTypes }
+      delete nameCoefficientTypes[key]
+      setData({ ...nextData, nameCoefficientTypes })
       setQuickGroup2Suggestions((current) => current.filter((item) =>
         item.trim().normalize('NFC').toLocaleLowerCase('vi-VN') !== key,
       ))

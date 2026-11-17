@@ -340,3 +340,87 @@ html:has(.app-shell-page), body:has(.app-shell-page) { overscroll-behavior: none
 .drawer-picker-row.has-leading { grid-template-columns:max-content minmax(0,1fr) 34px 34px; }
 .drawer-picker-row.has-leading .all-trigger { grid-column:1; grid-row:1; width:auto; padding:6px 10px; white-space:nowrap; }
 .drawer-picker-row.has-leading .drawer-visible { grid-column:2; }
+
+/* depgai-factory-reset-and-settings-hierarchy-20261117 */
+/* Limited to the two coefficient/catalog dialogs: no paper or calculator styling. */
+.name-coefficients-modal .sheet-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 13px max(20px, env(safe-area-inset-bottom));
+  background: #fbf8fa;
+}
+.name-coefficients-modal .coefficient-type-section {
+  margin: 0;
+  padding: 12px 12px 13px;
+  border: 1px solid #e7d7e2;
+  border-left: 3px solid #bc8fac;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgb(76 42 70 / 4%);
+}
+.name-coefficients-modal .coefficient-type-section > .coefficient-type-title {
+  padding: 0 9px;
+  margin-left: 2px;
+  color: #5d3a56;
+  font-size: 16px;
+  line-height: 1.35;
+  font-weight: 700;
+  letter-spacing: -.15px;
+}
+.name-coefficients-modal .coefficient-fields {
+  gap: 8px 10px;
+  margin-block: 8px;
+  padding: 9px 10px 10px;
+  border: 1px solid #f0e8ee;
+  border-radius: 10px;
+  background: #faf7f9;
+}
+.name-coefficients-modal .coefficient-fields > .coefficient-profile-title {
+  font-size: 11px;
+  font-weight: 500;
+  color: #8c7788;
+  letter-spacing: 0;
+}
+.name-coefficients-modal .coefficient-fields label {
+  gap: 5px;
+  color: #756777;
+  font-size: 11px;
+  font-weight: 500;
+}
+.name-coefficients-modal .coefficient-fields input {
+  min-height: 38px;
+  font-size: 15px;
+  font-weight: 500;
+}
+.name-coefficients-modal .catalog-metadata { gap: 10px; margin: 2px 0 12px; }
+.name-coefficients-modal .catalog-metadata > label,
+.name-coefficients-modal .catalog-rename-row label {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #756777;
+}
+.name-coefficients-modal .catalog-rename-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px;
+  gap: 8px;
+  align-items: end;
+}
+.name-coefficients-modal .catalog-reset-button {
+  width: 64px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0 7px;
+  border: 1px solid #dfc9d8;
+  border-radius: 9px;
+  background: #f5eaf1;
+  color: #78546e;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.name-coefficients-modal .catalog-reset-button:active { background: #ecdce7; }

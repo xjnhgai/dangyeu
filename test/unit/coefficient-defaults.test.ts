@@ -8,7 +8,7 @@ describe('formula-specific coefficient catalog', () => {
   it('initializes the requested defaults for each formula and profile', () => {
     for (const type of createCalculationDataV2().settingTypes) {
       if (['lb','la'].includes(type.formulaId)) expect([type.defaultCoefficientD,type.defaultCoefficientT]).toEqual(['21,8','80'])
-      if (['da','db'].includes(type.formulaId)) expect(type.defaultCoefficientsByCount).toEqual({'2':{coefficientD:'0,74',coefficientT:'70'},'3':{coefficientD:'0,74',coefficientT:'40000'}})
+      if (['da','db'].includes(type.formulaId)) expect(type.defaultCoefficientsByCount).toEqual({'2':{coefficientD:'0,74',coefficientT:'70'},'3':{coefficientD:'0,74',coefficientT:'400'}})
       if (['xa','xb'].includes(type.formulaId)) expect(type.defaultCoefficientsByCount).toEqual({'2':{coefficientD:'0,65',coefficientT:'10'},'3':{coefficientD:'0,65',coefficientT:'35'},'4':{coefficientD:'0,65',coefficientT:'100'}})
     }
   })
@@ -23,7 +23,7 @@ describe('formula-specific coefficient catalog', () => {
     expect(result.settingTypes[0].defaultCoefficientD).toBe('21,8')
     expect(result.settingTypes[0].defaultCoefficientT).toBe('0')
     expect(result.settingTypes.find((type) => type.formulaId === 'da')?.defaultCoefficientsByCount).toEqual({
-      '2': { coefficientD: '7', coefficientT: '0' }, '3': { coefficientD: '2.5', coefficientT: '40000' },
+      '2': { coefficientD: '7', coefficientT: '0' }, '3': { coefficientD: '2.5', coefficientT: '400' },
     })
     expect(data.settingTypes[0].defaultCoefficientD).toBeNull()
   })

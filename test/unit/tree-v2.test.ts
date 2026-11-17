@@ -65,8 +65,8 @@ describe('three-level V2 tree', () => {
     const data = base()
     const da = data.settingTypes.find((item) => item.formulaId === 'da')!
     const db = data.settingTypes.find((item) => item.formulaId === 'db')!
-    expect(da.defaultCoefficientsByCount).toEqual({ '2': { coefficientD: '0,74', coefficientT: '70' }, '3': { coefficientD: '0,74', coefficientT: '40000' } })
-    expect(db.defaultCoefficientsByCount).toEqual({ '2': { coefficientD: '0,74', coefficientT: '70' }, '3': { coefficientD: '0,74', coefficientT: '40000' } })
+    expect(da.defaultCoefficientsByCount).toEqual({ '2': { coefficientD: '0,74', coefficientT: '70' }, '3': { coefficientD: '0,74', coefficientT: '400' } })
+    expect(db.defaultCoefficientsByCount).toEqual({ '2': { coefficientD: '0,74', coefficientT: '70' }, '3': { coefficientD: '0,74', coefficientT: '400' } })
     const configured = updateSettingTypeDefaults(data, da.id, {
       coefficientsByCount: {
         '2': { coefficientD: '1', coefficientT: '2' },

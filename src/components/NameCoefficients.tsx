@@ -1,5 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { allConfig } from '../core/all-input'
+import { resetSettingTypeToFactory } from '../core/coefficient-defaults'
 import type { ListingCountKey, SettingTypeDefinition } from '../core/models-v2'
 import { getCoefficientProfileKeys, parseCoefficientTextV2 } from '../core/workspace-calculator-v2'
 
@@ -54,6 +55,24 @@ export default function NameCoefficients({ name, types, onSave, onClose, catalog
     return true
   }
 
+  function resetCatalogType(id: string) {
+    if (!catalog) return
+    const current = saved.current.find(type => type.id === id)
+    if (!current) return
+    const restored = resetSettingTypeToFactory(current)
+    const resetKey = restored.name.trim().normalize('NFC').toLocaleLowerCase('vi-VN')
+    if (saved.current.some(type => type.id !== id && type.name.trim().normalize('NFC').toLocaleLowerCase('vi-VN') === resetKey)) {
+      setErrors(previous => ({ ...previous, [`${id}:metadata:name`]: 'Tên không được trống hoặc trùng.' }))
+      return
+    }
+    // Only change the shared catalog type. Private per-name settings are NOT touched.
+    const next = saved.current.map(type => type.id === id ? restored : type)
+    saved.current = next
+    setDraft(previous => previous.map(type => type.id === id ? restored : type))
+    for (const [key, target] of dirty.current) if (target.id === id) dirty.current.delete(key)
+    setErrors(previous => Object.fromEntries(Object.entries(previous).filter(([key]) => !key.startsWith(`${id}:`))))
+    onSave(next)
+  }
   function metadata(id: string, field: 'name' | 'allAliases' | 'kepName' | 'kepAliases', value: string) {
     setDraft(current => current.map(type => type.id === id ? {...type, [field]: value} : type))
     const errorKey = `${id}:metadata:${field}`
@@ -75,10 +94,12 @@ export default function NameCoefficients({ name, types, onSave, onClose, catalog
           const keys: (ListingCountKey | undefined)[] = getCoefficientProfileKeys(type.formulaId)
           if (!keys.length) keys.push(undefined)
           const byDigits = type.formulaId === 'da' || type.formulaId === 'db'
-          return <fieldset key={type.id}><legend>{type.name}</legend>
+          return <fieldset className="coefficient-type-section" key={type.id}><legend className="coefficient-type-title">{type.name}</legend>
             {catalog && <div className="catalog-metadata">
-              <label>Đổi tên<input aria-label={`Tên thiết lập ${type.formulaId}`} value={type.name} onChange={e=>metadata(type.id, 'name', e.target.value)} /></label>
-              <button type="button" onClick={()=>metadata(type.id, 'name', ({da:'ĐA',db:'ĐB'} as Record<string,string>)[type.formulaId] ?? type.formulaId.toUpperCase())}>Reset tên</button>
+              <div className="catalog-rename-row">
+                <label>Đổi tên<input aria-label={`Tên thiết lập ${type.formulaId}`} value={type.name} onChange={e=>metadata(type.id, 'name', e.target.value)} /></label>
+                <button className="catalog-reset-button" type="button" aria-label={`Reset ${type.name}`} onClick={()=>resetCatalogType(type.id)}>Reset</button>
+              </div>
               <label>Tên khác<input aria-label={`Tên khác ${type.formulaId}`} value={allConfig(type).aliases.replaceAll('%','&')} onChange={e=>metadata(type.id, 'allAliases', e.target.value)} /></label>
               {byDigits && <fieldset><legend>{type.formulaId === 'da' ? 'kép A' : 'kép B'}</legend>
                 <label>Đổi tên<input aria-label={`Tên kép ${type.formulaId}`} value={type.kepName ?? `kép ${type.formulaId === 'da' ? 'a' : 'b'}`} onChange={e=>metadata(type.id, 'kepName', e.target.value)} /></label>
@@ -89,7 +110,7 @@ export default function NameCoefficients({ name, types, onSave, onClose, catalog
             {keys.map(key => {
             const suffix = key ? `${key} ${byDigits ? 'chữ số' : 'số'}` : ''
   return <div className="coefficient-fields" key={key ?? 'scalar'}>
-              {key && <strong>{suffix}</strong>}
+              {key && <strong className="coefficient-profile-title">{suffix}</strong>}
               {(['coefficientD', 'coefficientT'] as const).map((field, index) => {
                 const target = { id: type.id, field, key }
                 const label = index ? 'Hệ số Trúng' : 'Hệ số Đánh'

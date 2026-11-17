@@ -56,12 +56,12 @@ describe('coefficient sources and hand-calculated results', () => {
     expect(totals(data,'combined')).toMatchObject({d:40,t:60})
     expect(totals(data,'group2')).toMatchObject({d:70,t:110})
   })
-  it('falls back to current global settings only for a name or type not configured yet', () => {
+  it('uses factory settings when a name or formula has no saved private coefficients', () => {
     const data=sample('lb','070')
     delete data.nameCoefficientTypes!.mai
-    expect(totals(data,'group2')).toMatchObject({d:20,t:30})
+    expect(totals(data,'group2')).toMatchObject({d:218,t:800})
     data.nameCoefficientTypes!.mai=[data.settingTypes[1]]
-    expect(totals(data,'group2')).toMatchObject({d:20,t:30})
+    expect(totals(data,'group2')).toMatchObject({d:218,t:800})
   })
   it('rejects an incomplete name profile instead of borrowing the global one', () => {
     const data=sample('xb','70 12')

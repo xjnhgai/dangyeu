@@ -1,4 +1,5 @@
 import type { CalculationDataV2, SettingTypeDefinition } from './models-v2'
+import { factoryCoefficientValues } from './coefficient-defaults'
 
 export function coefficientNameKey(name: string): string {
   return name.trim().normalize('NFC').toLocaleLowerCase('vi-VN')
@@ -16,6 +17,6 @@ export function coefficientTypesForName(data: CalculationDataV2, name: string): 
       defaultCoefficientD: own.defaultCoefficientD,
       defaultCoefficientT: own.defaultCoefficientT,
       defaultCoefficientsByCount: own.defaultCoefficientsByCount,
-    } : type
+    } : factoryCoefficientValues(type)
   })
 }

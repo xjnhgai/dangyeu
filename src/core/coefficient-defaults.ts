@@ -15,10 +15,35 @@ export function withCoefficientDefaults(type: SettingTypeDefinition): SettingTyp
     defaultCoefficientT: fallback(type.defaultCoefficientT, t),
     ...(keys.length ? { defaultCoefficientsByCount: Object.fromEntries(keys.map(key => [key, {
       coefficientD: fallback(type.defaultCoefficientsByCount?.[key]?.coefficientD, de ? fallback(type.defaultCoefficientD, d) : d),
-      coefficientT: fallback(type.defaultCoefficientsByCount?.[key]?.coefficientT, de ? (key === '3' ? '40000' : fallback(type.defaultCoefficientT, t)) : ({'2':'10','3':'35','4':'100'}[key])),
+      coefficientT: fallback(type.defaultCoefficientsByCount?.[key]?.coefficientT, de ? (key === '3' ? '400' : fallback(type.defaultCoefficientT, t)) : ({'2':'10','3':'35','4':'100'}[key])),
     }])) } : {}),
   }
 }
 export function initializeCoefficientDefaults(data: CalculationDataV2): CalculationDataV2 {
   return { ...data, settingTypes: data.settingTypes.map(withCoefficientDefaults) }
+}
+
+/** Hard-coded factory rates. Existing saved values are never changed automatically. */
+export function factoryCoefficientValues(type: SettingTypeDefinition): SettingTypeDefinition {
+  const factory = withCoefficientDefaults({
+    ...type,
+    defaultCoefficientD: null,
+    defaultCoefficientT: null,
+    defaultCoefficientsByCount: {},
+  })
+  return {
+    ...type,
+    defaultCoefficientD: factory.defaultCoefficientD,
+    defaultCoefficientT: factory.defaultCoefficientT,
+    defaultCoefficientsByCount: factory.defaultCoefficientsByCount,
+  }
+}
+
+/** Catalog-only reset: restore factory coefficients and the standard formula name. */
+export function resetSettingTypeToFactory(type: SettingTypeDefinition): SettingTypeDefinition {
+  const names: Record<SettingTypeDefinition['formulaId'], string> = {
+    lb: 'LB', la: 'LA', da: 'ĐA', db: 'ĐB',
+    ca: 'CA', cb: 'CB', xa: 'XA', xb: 'XB',
+  }
+  return { ...factoryCoefficientValues(type), name: names[type.formulaId] }
 }
